@@ -1633,6 +1633,7 @@ function callGeminiVisionAPI(imageSrc, apiKey, mealName) {
         if (msg.includes("429") || msg.includes("Too Many Requests")) {
           showToast("Превышен лимит запросов Google Gemini (429). Подождите 1 минуту.", "error");
         } else {
+          showToast(`Ошибка ИИ: ${msg || apiError}`, "error");
           showToast("Ошибка подключения к ИИ. Переключение на локальный ИИ.", "info");
         }
         runSimulatedClassification(imageSrc, mealName);
