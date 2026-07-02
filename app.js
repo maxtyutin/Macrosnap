@@ -430,21 +430,27 @@ function deleteMeal(idx) {
 
 // ================= TAB NAVIGATION =================
 function switchTab(tabId) {
-  const tabs = ["dashboard", "scan"];
+  const tabs = ["dashboard", "scan", "profile"];
   tabs.forEach(t => {
     const el = document.getElementById(`tab-${t}`);
     const btn = document.getElementById(`nav-${t}-btn`);
-    if (t === tabId) {
-      el.classList.add("active-tab");
-      btn.classList.add("active");
-    } else {
-      el.classList.remove("active-tab");
-      btn.classList.remove("active");
+    if (el) {
+      if (t === tabId) {
+        el.classList.add("active-tab");
+        if (btn) btn.classList.add("active");
+      } else {
+        el.classList.remove("active-tab");
+        if (btn) btn.classList.remove("active");
+      }
     }
   });
 
   if (tabId === "dashboard") {
     updateDashboard();
+  }
+  
+  if (tabId === "profile") {
+    renderUserProfile();
   }
   
   // Auto stop webcam if navigating away
@@ -1665,4 +1671,353 @@ function loadGeminiResults(jsonData, imageSrc) {
   };
 
   showAnalysisResult();
+}
+
+// ================= PERSONAL PROFILE & AUTHENTICATION =================
+
+// State variables loaded from localStorage
+let currentUser = JSON.parse(localStorage.getItem("currentUser")) || null;
+let registeredUsers = JSON.parse(localStorage.getItem("registeredUsers")) || {};
+let tempEmail = "";
+let tempCode = "";
+
+// Auto load target on initialization
+if (currentUser) {
+  applyUserTargets(currentUser);
+}
+
+// Modal control
+function openAuthModal() {
+  document.getElementById("auth-modal").style.display = "flex";
+  showAuthScreen("email");
+  // Clean inputs
+  document.getElementById("auth-email-input").value = "";
+  const codeBoxes = document.querySelectorAll(".code-box-input");
+  codeBoxes.forEach(box => box.value = "");
+}
+
+function closeAuthModal() {
+  document.getElementById("auth-modal").style.display = "none";
+}
+
+function showAuthScreen(screenId) {
+  const screens = ["email", "code", "setup"];
+  screens.forEach(s => {
+    document.getElementById(`auth-screen-${s}`).style.display = s === screenId ? "block" : "none";
+  });
+  
+  if (screenId === "email") {
+    document.getElementById("auth-modal-title").innerText = "Вход / Регистрация";
+  } else if (screenId === "code") {
+    document.getElementById("auth-modal-title").innerText = "Подтверждение почты";
+    // Focus first box
+    setTimeout(() => {
+      const codeBoxes = document.querySelectorAll(".code-box-input");
+      if (codeBoxes.length > 0) codeBoxes[0].focus();
+    }, 100);
+  } else if (screenId === "setup") {
+    document.getElementById("auth-modal-title").innerText = "Настройка профиля";
+  }
+}
+
+// Step 1: Submit Email
+function submitAuthEmail() {
+  const emailInput = document.getElementById("auth-email-input").value.trim();
+  if (!emailInput || !emailInput.includes("@")) {
+    showToast("Пожалуйста, введите корректную почту", "info");
+    return;
+  }
+
+  tempEmail = emailInput;
+  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  
+  // Disable button while sending
+  const sendBtn = document.getElementById("auth-email-btn");
+  sendBtn.disabled = true;
+  sendBtn.innerText = "Отправка...";
+
+  if (isLocal) {
+    // Call server to send verification code
+    fetch("http://localhost:8888/api/send-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: tempEmail })
+    })
+    .then(res => res.json())
+    .then(data => {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = 'Отправить код <i data-lucide="arrow-right"></i>';
+      if (window.lucide) window.lucide.createIcons();
+      
+      if (data.success) {
+        tempCode = data.code;
+        showToast("Код подтверждения отправлен!", "success");
+        showToast(`[Разработка] Ваш код: ${data.code}`, "info");
+        showAuthScreen("code");
+        document.getElementById("auth-code-instruction").innerText = `Код отправлен на почту ${tempEmail}. (Код для входа: ${data.code})`;
+      } else {
+        showToast("Ошибка отправки кода: " + (data.error || "Неизвестная ошибка"), "error");
+      }
+    })
+    .catch(err => {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = 'Отправить код <i data-lucide="arrow-right"></i>';
+      if (window.lucide) window.lucide.createIcons();
+      console.error("Auth send-code error:", err);
+      // Fallback local code generation if local server crashed or offline
+      fallbackLocalCodeGeneration();
+    });
+  } else {
+    // Remote client-side simulation (GitHub Pages)
+    setTimeout(() => {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = 'Отправить код <i data-lucide="arrow-right"></i>';
+      if (window.lucide) window.lucide.createIcons();
+      fallbackLocalCodeGeneration();
+    }, 800);
+  }
+}
+
+function fallbackLocalCodeGeneration() {
+  const generatedCode = String(Math.floor(1000 + Math.random() * 9000));
+  tempCode = generatedCode;
+  showToast(`[Демо-режим] Код подтверждения: ${generatedCode}`, "success");
+  showAuthScreen("code");
+  document.getElementById("auth-code-instruction").innerText = `Код подтверждения (имитация): ${generatedCode}`;
+}
+
+// Step 2: Handle 4-Digit Input Boxes
+function handleCodeBoxKey(input, event, index) {
+  const codeBoxes = document.querySelectorAll(".code-box-input");
+  const val = input.value;
+  
+  // Shift to next box on input digit
+  if (val.length === 1 && index < 3) {
+    codeBoxes[index + 1].focus();
+  }
+  
+  // Shift to previous box on Backspace
+  if (event.key === "Backspace" && val.length === 0 && index > 0) {
+    codeBoxes[index - 1].focus();
+  }
+}
+
+// Step 2: Verify Code
+function submitAuthCode() {
+  const codeBoxes = document.querySelectorAll(".code-box-input");
+  let enteredCode = "";
+  codeBoxes.forEach(box => enteredCode += box.value.trim());
+  
+  if (enteredCode.length < 4) {
+    showToast("Введите 4-значный код подтверждения", "info");
+    return;
+  }
+  
+  if (enteredCode !== tempCode) {
+    showToast("Неверный код подтверждения!", "error");
+    return;
+  }
+  
+  // Success! Check if email is already registered
+  if (registeredUsers[tempEmail]) {
+    // Log in immediately
+    currentUser = registeredUsers[tempEmail];
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
+    applyUserTargets(currentUser);
+    closeAuthModal();
+    showToast(`Рады видеть вас снова, ${currentUser.name}!`, "success");
+    renderUserProfile();
+    updateDashboard();
+  } else {
+    // Switch to setup profile screen
+    showAuthScreen("setup");
+  }
+}
+
+// Step 3: Setup Profile and Mifflin-St Jeor daily goal calculations
+function submitAuthSetup() {
+  const name = document.getElementById("setup-name-input").value.trim() || "Пользователь";
+  const gender = document.getElementById("setup-gender-select").value;
+  const age = parseInt(document.getElementById("setup-age-input").value) || 25;
+  const height = parseInt(document.getElementById("setup-height-input").value) || 175;
+  const weight = parseInt(document.getElementById("setup-weight-input").value) || 70;
+  const activity = parseFloat(document.getElementById("setup-activity-select").value) || 1.2;
+  
+  // Calculate targets
+  const computedTargets = calculateUserCalorieGoal(gender, age, height, weight, activity);
+  
+  const newUser = {
+    email: tempEmail,
+    name: name,
+    gender: gender,
+    age: age,
+    height: height,
+    weight: weight,
+    activity: activity,
+    targets: computedTargets
+  };
+  
+  // Register user
+  registeredUsers[tempEmail] = newUser;
+  currentUser = newUser;
+  
+  // Save to localStorage
+  localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
+  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  
+  applyUserTargets(currentUser);
+  closeAuthModal();
+  showToast(`Добро пожаловать, ${name}! Профиль успешно настроен.`, "success");
+  
+  renderUserProfile();
+  updateDashboard();
+}
+
+// BMR and Calorie Target Calculation based on Mifflin-St Jeor formula
+function calculateUserCalorieGoal(gender, age, height, weight, activityMultiplier) {
+  let bmr = 0;
+  if (gender === "male") {
+    bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+  } else {
+    bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+  }
+  
+  const tdee = Math.round(bmr * activityMultiplier);
+  
+  // Calculate protein, fat, carb, fiber ratios
+  const proteinVal = Math.round((tdee * 0.30) / 4); // 30% of total calories
+  const carbsVal = Math.round((tdee * 0.45) / 4);   // 45% of total calories
+  const fatsVal = Math.round((tdee * 0.25) / 9);    // 25% of total calories
+  const fiberVal = Math.min(40, Math.max(20, Math.round((tdee * 14) / 1000))); // 14g per 1000 kcal
+  
+  return {
+    bmr: Math.round(bmr),
+    calories: tdee,
+    protein: proteinVal,
+    carbs: carbsVal,
+    fats: fatsVal,
+    fiber: fiberVal
+  };
+}
+
+function applyUserTargets(user) {
+  dailyTargets.calories = user.targets.calories;
+  dailyTargets.protein = user.targets.protein;
+  dailyTargets.carbs = user.targets.carbs;
+  dailyTargets.fats = user.targets.fats;
+  dailyTargets.fiber = user.targets.fiber;
+}
+
+// Render User Profile Screen
+function renderUserProfile() {
+  const loggedView = document.getElementById("profile-logged-view");
+  const unloggedView = document.getElementById("profile-unlogged-view");
+  
+  if (!currentUser) {
+    if (loggedView) loggedView.style.display = "none";
+    if (unloggedView) unloggedView.style.display = "flex";
+    return;
+  }
+  
+  if (loggedView) loggedView.style.display = "block";
+  if (unloggedView) unloggedView.style.display = "none";
+  
+  // Profile Meta
+  document.getElementById("profile-display-name").innerText = currentUser.name;
+  document.getElementById("profile-display-email").innerText = currentUser.email;
+  document.getElementById("profile-letter-avatar").innerText = currentUser.name.charAt(0).toUpperCase();
+  
+  // Calculated summaries
+  document.getElementById("profile-calculated-target").innerText = `${currentUser.targets.calories} ккал`;
+  document.getElementById("profile-bmr-val").innerText = currentUser.targets.bmr;
+  
+  // BMI (Weight in kg / Height in m^2)
+  const hMeters = currentUser.height / 100;
+  const bmi = Math.round((currentUser.weight / (hMeters * hMeters)) * 10) / 10;
+  document.getElementById("profile-bmi-val").innerText = bmi;
+  
+  // BMI Status
+  const bmiStatusEl = document.getElementById("profile-bmi-status");
+  if (bmi < 18.5) {
+    bmiStatusEl.innerText = "Дефицит массы";
+    bmiStatusEl.style.background = "rgba(245, 158, 11, 0.1)";
+    bmiStatusEl.style.color = "#f59e0b";
+    bmiStatusEl.style.borderColor = "rgba(245, 158, 11, 0.2)";
+  } else if (bmi < 25) {
+    bmiStatusEl.innerText = "Норма";
+    bmiStatusEl.style.background = "rgba(16, 185, 129, 0.1)";
+    bmiStatusEl.style.color = "#10B981";
+    bmiStatusEl.style.borderColor = "rgba(16, 185, 129, 0.2)";
+  } else if (bmi < 30) {
+    bmiStatusEl.innerText = "Избыточный вес";
+    bmiStatusEl.style.background = "rgba(245, 158, 11, 0.1)";
+    bmiStatusEl.style.color = "#f59e0b";
+    bmiStatusEl.style.borderColor = "rgba(245, 158, 11, 0.2)";
+  } else {
+    bmiStatusEl.innerText = "Ожирение";
+    bmiStatusEl.style.background = "rgba(239, 68, 68, 0.1)";
+    bmiStatusEl.style.color = "#ef4444";
+    bmiStatusEl.style.borderColor = "rgba(239, 68, 68, 0.2)";
+  }
+  
+  // Set slider labels
+  document.getElementById("profile-weight-label").innerText = `${currentUser.weight} кг`;
+  document.getElementById("profile-height-label").innerText = `${currentUser.height} см`;
+  document.getElementById("profile-age-label").innerText = `${currentUser.age} лет`;
+  
+  // Sync sliders
+  document.getElementById("profile-weight-slider").value = currentUser.weight;
+  document.getElementById("profile-height-slider").value = currentUser.height;
+  document.getElementById("profile-age-slider").value = currentUser.age;
+  
+  // Redraw icons
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+// Handle live slider parameters edit
+function updateProfileMetric(metric, value) {
+  if (!currentUser) return;
+  
+  currentUser[metric] = parseInt(value);
+  
+  // Recalculate targets based on newly adjusted parameters
+  currentUser.targets = calculateUserCalorieGoal(
+    currentUser.gender,
+    currentUser.age,
+    currentUser.height,
+    currentUser.weight,
+    currentUser.activity
+  );
+  
+  // Save changes
+  registeredUsers[currentUser.email] = currentUser;
+  localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
+  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  
+  // Update targets and redraw
+  applyUserTargets(currentUser);
+  renderUserProfile();
+  updateDashboard();
+}
+
+// Log out
+function handleLogout() {
+  if (!confirm("Вы действительно хотите выйти из своего профиля?")) return;
+  
+  currentUser = null;
+  localStorage.removeItem("currentUser");
+  
+  // Reset targets to standard defaults
+  dailyTargets.calories = 2000;
+  dailyTargets.protein = 130;
+  dailyTargets.carbs = 240;
+  dailyTargets.fats = 65;
+  dailyTargets.fiber = 30;
+  
+  showToast("Вы вышли из своего личного кабинета", "info");
+  renderUserProfile();
+  updateDashboard();
+  switchTab("dashboard");
 }

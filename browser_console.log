@@ -35,3 +35,19 @@ window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://l
 window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.1:511:3
 window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.2:505:3
 window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.2:505:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.3:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.3:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.3:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.3:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.4:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.5:511:3
+console.log: [MAIL SERVER] Sent verification code 8351 to maxtyutin@gmail.com
+console.error: Ошибка загрузки TensorFlow.js MobileNet: TypeError: Failed to fetch
+TypeError: Failed to fetch
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3
+console.log: [MAIL SERVER] Sent verification code 5867 to maxtyutin@gmail.com
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3
+window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3

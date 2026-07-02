@@ -3,6 +3,7 @@ import socketserver
 import urllib.request
 import json
 import os
+import random
 
 PORT = 8888
 
@@ -48,13 +49,39 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 error_response = {'error': str(e)}
                 self.wfile.write(json.dumps(error_response).encode())
+        elif self.path == '/api/send-code':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode("utf-8"))
+                email = data.get('email', '')
+                code = str(random.randint(1000, 9999))
+                
+                print(f"\n[MAIL SERVER] Sending confirmation code {code} to {email}\n")
+                
+                # Append to browser_console.log so the frontend logs capture it for convenience
+                with open("browser_console.log", "a", encoding="utf-8") as f:
+                    f.write(f"console.log: [MAIL SERVER] Sent verification code {code} to {email}\n")
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response_data = {'success': True, 'code': code, 'email': email}
+                self.wfile.write(json.dumps(response_data).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                error_response = {'error': str(e)}
+                self.wfile.write(json.dumps(error_response).encode())
         elif self.path == '/api/log':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             try:
                 log_data = json.loads(post_data.decode("utf-8"))
                 msg = log_data.get('message', '')
-                # Append to browser_console.log in the workspace
                 with open("browser_console.log", "a", encoding="utf-8") as f:
                     f.write(f"{msg}\n")
                 self.send_response(200)
