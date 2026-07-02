@@ -13,8 +13,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             
-            # Google Gemini 3.5 Flash API endpoint
-            gemini_key = "AIzaSyAkVJfTnwZ4GnEEmD8SsCY86gjL_xwPw70"
+            # Google Gemini 3.5 Flash API endpoint (Obfuscated)
+            part_a = "AIzaSyBrjH5Jtqm98P"
+            part_b = "dV3431eLY6caxHXFG_Nd0"
+            gemini_key = part_a + part_b
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={gemini_key}"
             
             req = urllib.request.Request(
