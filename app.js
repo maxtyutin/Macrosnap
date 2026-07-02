@@ -1609,7 +1609,11 @@ function callGeminiVisionAPI(imageSrc, apiKey, mealName) {
           try {
             const errData = await response.json();
             if (errData && errData.error) {
-              errMsg = errData.error;
+              if (typeof errData.error === 'object') {
+                errMsg = errData.error.message || JSON.stringify(errData.error);
+              } else {
+                errMsg = errData.error;
+              }
             }
           } catch(e) {}
           throw new Error(errMsg);
@@ -1629,11 +1633,11 @@ function callGeminiVisionAPI(imageSrc, apiKey, mealName) {
       })
       .catch(apiError => {
         console.error("Gemini API Error:", apiError);
-        const msg = apiError.message || "";
+        const msg = apiError.message || String(apiError);
         if (msg.includes("429") || msg.includes("Too Many Requests")) {
           showToast("Превышен лимит запросов Google Gemini (429). Подождите 1 минуту.", "error");
         } else {
-          showToast(`Ошибка ИИ: ${msg || apiError}`, "error");
+          showToast(`Ошибка ИИ: ${msg}`, "error");
           showToast("Ошибка подключения к ИИ. Переключение на локальный ИИ.", "info");
         }
         runSimulatedClassification(imageSrc, mealName);
