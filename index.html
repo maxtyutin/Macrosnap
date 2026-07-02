@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MacroSnap AI — Трекер питания по фото</title>
+  <meta name="description" content="Умный трекер калорий и макронутриентов. Сфотографируйте еду, а наш ИИ определит ингредиенты, вес, калории и даст персональные рекомендации!">
+  <link rel="stylesheet" href="styles.css?v=3.2">
+  <!-- Google Fonts: Outfit and Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons (CDN) for UI Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar / Top Navigation -->
+    <header class="app-header">
+      <div class="logo-section">
+        <div class="logo-icon">
+          <i data-lucide="scan-line"></i>
+        </div>
+        <span class="logo-text">MacroSnap <span class="accent-text">AI</span></span>
+      </div>
+      <nav class="app-nav">
+        <button class="nav-btn active" id="nav-dashboard-btn" onclick="switchTab('dashboard')">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Дашборд</span>
+        </button>
+        <button class="nav-btn" id="nav-scan-btn" onclick="switchTab('scan')">
+          <i data-lucide="camera"></i>
+          <span>Сканировать</span>
+        </button>
+      </nav>
+      <div class="header-actions">
+        <div class="streak-badge">
+          <i data-lucide="flame" class="streak-icon"></i>
+          <span id="streak-count">3 дня</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-content">
+      
+      <!-- ================= DASHBOARD TAB ================= -->
+      <section id="tab-dashboard" class="tab-content active-tab">
+        <div class="dashboard-grid">
+          <!-- Main Calorie Card -->
+          <div class="card calorie-card">
+            <div class="card-glow"></div>
+            <h3>Калории за день</h3>
+            <div class="calorie-progress-container">
+              <svg class="progress-ring" width="220" height="220">
+                <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.05)" stroke-width="12" fill="transparent" r="90" cx="110" cy="110"/>
+                <circle id="calorie-progress-circle" class="progress-ring__circle" stroke="url(#calorie-grad)" stroke-width="12" fill="transparent" r="90" cx="110" cy="110"/>
+                <!-- Gradients Definition -->
+                <defs>
+                  <linearGradient id="calorie-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f59e0b" />
+                    <stop offset="100%" stop-color="#ef4444" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="calorie-text">
+                <span id="calories-current" class="val">0</span>
+                <span class="sep">из</span>
+                <span id="calories-target" class="target">2000 ккал</span>
+              </div>
+            </div>
+            <div class="calorie-stats">
+              <div class="stat-item">
+                <span class="label">Осталось</span>
+                <span id="calories-remaining" class="value positive">2000 ккал</span>
+              </div>
+              <div class="stat-item">
+                <span class="label">Приемов пищи</span>
+                <span id="meals-count" class="value">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Macros Progress Grid -->
+          <div class="macros-summary-grid">
+            <!-- Protein Card -->
+            <div class="card macro-card protein">
+              <div class="macro-icon-wrapper">
+                <i data-lucide="beef"></i>
+              </div>
+              <div class="macro-info">
+                <span class="macro-title">Белки</span>
+                <div class="macro-bar-container">
+                  <div id="protein-progress" class="macro-bar" style="width: 0%"></div>
+                </div>
+                <div class="macro-values">
+                  <span id="protein-current">0г</span> / <span id="protein-target">130г</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Carbs Card -->
+            <div class="card macro-card carbs">
+              <div class="macro-icon-wrapper">
+                <i data-lucide="wheat"></i>
+              </div>
+              <div class="macro-info">
+                <span class="macro-title">Углеводы</span>
+                <div class="macro-bar-container">
+                  <div id="carbs-progress" class="macro-bar" style="width: 0%"></div>
+                </div>
+                <div class="macro-values">
+                  <span id="carbs-current">0г</span> / <span id="carbs-target">240г</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fats Card -->
+            <div class="card macro-card fats">
+              <div class="macro-icon-wrapper">
+                <i data-lucide="droplet"></i>
+              </div>
+              <div class="macro-info">
+                <span class="macro-title">Жиры</span>
+                <div class="macro-bar-container">
+                  <div id="fats-progress" class="macro-bar" style="width: 0%"></div>
+                </div>
+                <div class="macro-values">
+                  <span id="fats-current">0г</span> / <span id="fats-target">65г</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fiber Card -->
+            <div class="card macro-card fiber">
+              <div class="macro-icon-wrapper">
+                <i data-lucide="apple"></i>
+              </div>
+              <div class="macro-info">
+                <span class="macro-title">Клетчатка</span>
+                <div class="macro-bar-container">
+                  <div id="fiber-progress" class="macro-bar" style="width: 0%"></div>
+                </div>
+                <div class="macro-values">
+                  <span id="fiber-current">0г</span> / <span id="fiber-target">30г</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Log -->
+        <div class="card log-card">
+          <div class="log-header">
+            <h3>Дневник питания за сегодня</h3>
+            <button class="btn btn-secondary btn-small" onclick="clearDailyLog()">
+              <i data-lucide="trash-2"></i> Сбросить день
+            </button>
+          </div>
+          <div id="meal-log-list" class="meal-log-list">
+            <!-- Dynamic elements will be inserted here -->
+            <div class="empty-log-state">
+              <div class="empty-icon"><i data-lucide="utensils"></i></div>
+              <p>Вы пока не добавили ни одного приема пищи сегодня.</p>
+              <button class="btn btn-primary" onclick="switchTab('scan')">
+                <i data-lucide="plus"></i>Добавить по фото
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SCAN TAB ================= -->
+      <section id="tab-scan" class="tab-content">
+        <div class="scan-grid">
+          
+          <!-- Source/Capture Section -->
+          <div class="card capture-card">
+            <h3>Выберите способ ввода</h3>
+            
+            <!-- Try Demo Section -->
+            <div class="demo-section">
+              <span class="demo-section-title">Быстрый старт: демо-блюда</span>
+              <div class="demo-gallery">
+                <div class="demo-item-card" onclick="loadDemoMeal('avocado_toast')">
+                  <img src="images/avocado_toast.jpg" alt="Авокадо-тост" loading="lazy">
+                  <div class="demo-item-info">
+                    <span class="title">Авокадо-тост с яйцом</span>
+                    <span class="subtitle">Полезный завтрак</span>
+                  </div>
+                </div>
+                <div class="demo-item-card" onclick="loadDemoMeal('chicken_salad')">
+                  <img src="images/chicken_salad.jpg" alt="Салат с курицей" loading="lazy">
+                  <div class="demo-item-info">
+                    <span class="title">Салат с курицей-гриль</span>
+                    <span class="subtitle">Высокобелковый обед</span>
+                  </div>
+                </div>
+                <div class="demo-item-card" onclick="loadDemoMeal('pepperoni_pizza')">
+                  <img src="images/pepperoni_pizza.jpg" alt="Пепперони пицца" loading="lazy">
+                  <div class="demo-item-info">
+                    <span class="title">Слайс пиццы пепперони</span>
+                    <span class="subtitle">Читмил / Перекус</span>
+                  </div>
+                </div>
+                <div class="demo-item-card" onclick="loadDemoMeal('berry_bowl')">
+                  <img src="images/berry_bowl.jpg" alt="Йогурт с ягодами" loading="lazy">
+                  <div class="demo-item-info">
+                    <span class="title">Смузи-боул с ягодами</span>
+                    <span class="subtitle">Клетчатка и витамины</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload Dropzone & Camera Trigger -->
+            <div class="upload-options">
+              <div class="divider-text">Или загрузите свое фото</div>
+              <div id="drop-zone" class="drop-zone">
+                <i data-lucide="image-plus" class="drop-icon"></i>
+                <p class="drop-title">Перетащите сюда фото или нажмите для обзора</p>
+                <span class="drop-subtitle">Поддерживаются форматы JPG, PNG</span>
+                <input type="file" id="file-input" accept="image/*" style="display: none;">
+              </div>
+
+              <div class="camera-actions">
+                <button id="start-camera-btn" class="btn btn-secondary w-full" onclick="startWebcam()">
+                  <i data-lucide="aperture"></i> Включить камеру
+                </button>
+              </div>
+
+              <!-- Camera Viewport Container (Hidden initially) -->
+              <div id="camera-container" class="camera-container" style="display: none;">
+                <video id="webcam-preview" autoplay playsinline></video>
+                <div class="camera-overlay-frame"></div>
+                <div class="camera-controls">
+                  <button class="btn btn-primary" onclick="capturePhoto()">
+                    <i data-lucide="camera"></i>Сделать снимок
+                  </button>
+                  <button class="btn btn-secondary" onclick="stopWebcam()">
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scan Process & Analysis Result Section -->
+          <div class="card analysis-card">
+            <div id="analysis-placeholder" class="analysis-placeholder">
+              <div class="placeholder-icon">
+                <i data-lucide="cpu" class="loading-pulse-slow"></i>
+              </div>
+              <h4>Ожидание загрузки блюда</h4>
+              <p>Выберите демо-блюдо или загрузите фото, чтобы запустить нейросеть для распознавания ингредиентов.</p>
+              <div id="model-status" class="model-status">
+                <span class="status-dot yellow"></span>
+                <span class="status-text">Инициализация ИИ (TensorFlow)...</span>
+              </div>
+            </div>
+
+            <!-- Scanning Animation Screen -->
+            <div id="scanning-screen" class="scanning-screen" style="display: none;">
+              <div class="scan-image-preview-container">
+                <img id="scanning-image-preview" src="" alt="Сканирование...">
+                <div class="scan-laser-line"></div>
+                <div class="scan-grid-overlay"></div>
+                <!-- Bounding boxes will be inserted here dynamically -->
+                <div id="scan-bounding-boxes"></div>
+              </div>
+              <div class="scanning-status">
+                <h4 id="scanning-status-title">Сканирование...</h4>
+                <div class="loading-bar-container">
+                  <div class="loading-bar" id="scan-loading-bar" style="width: 0%"></div>
+                </div>
+                <p id="scanning-status-desc">Свертка фич и обнаружение пикселей еды...</p>
+              </div>
+            </div>
+
+            <!-- Analysis Result Dashboard -->
+            <div id="analysis-result" class="analysis-result" style="display: none;">
+              <div class="result-image-header">
+                <img id="result-image" src="" alt="Результат распознавания">
+                <div class="result-image-badge">
+                  <i data-lucide="check-circle-2"></i> Распознано ИИ
+                </div>
+                <!-- Bounding boxes will be inserted here dynamically -->
+                <div id="result-bounding-boxes"></div>
+              </div>
+
+              <!-- Raw AI Classifications -->
+              <div class="ai-raw-outputs" id="ai-raw-outputs"></div>
+
+              <!-- Main Split Panels -->
+              <div class="analysis-details-grid">
+                
+                <!-- Macro Breakdown Circle -->
+                <div class="result-macros-summary">
+                  <div class="total-calories-display">
+                    <span id="result-calories-val" class="kcal-number">0</span>
+                    <span class="kcal-label">ккал</span>
+                  </div>
+                  <div class="macros-mini-bars">
+                    <div class="mini-bar-item protein">
+                      <div class="bar-header">
+                        <span>Белки</span>
+                        <span id="result-p-val">0г</span>
+                      </div>
+                      <div class="bar-bg"><div id="result-p-bar" class="bar-fill" style="width: 0%"></div></div>
+                    </div>
+                    <div class="mini-bar-item carbs">
+                      <div class="bar-header">
+                        <span>Углеводы</span>
+                        <span id="result-c-val">0г</span>
+                      </div>
+                      <div class="bar-bg"><div id="result-c-bar" class="bar-fill" style="width: 0%"></div></div>
+                    </div>
+                    <div class="mini-bar-item fats">
+                      <div class="bar-header">
+                        <span>Жиры</span>
+                        <span id="result-f-val">0г</span>
+                      </div>
+                      <div class="bar-bg"><div id="result-f-bar" class="bar-fill" style="width: 0%"></div></div>
+                    </div>
+                    <div class="mini-bar-item fiber">
+                      <div class="bar-header">
+                        <span>Клетчатка</span>
+                        <span id="result-fb-val">0г</span>
+                      </div>
+                      <div class="bar-bg"><div id="result-fb-bar" class="bar-fill" style="width: 0%"></div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Bounding boxes and ingredient editing list -->
+                <div class="ingredients-list-panel">
+                  <h4>Состав и примерный вес</h4>
+                  <p class="section-desc">Отрегулируйте ползунками вес ингредиентов, если ИИ ошибся с пропорциями.</p>
+                  
+                  <div id="ingredients-editor" class="ingredients-editor-list">
+                    <!-- Dynamic ingredient rows here -->
+                  </div>
+
+                  <!-- Autocomplete & Add Product -->
+                  <div class="add-ingredient-section">
+                    <div class="input-autocomplete-wrapper">
+                      <i data-lucide="plus" class="add-icon"></i>
+                      <input type="text" id="add-ingredient-input" placeholder="Добавить ингредиент вручную..." oninput="handleIngredientSearch()" onfocus="handleIngredientSearch()">
+                      <div id="autocomplete-dropdown" class="autocomplete-dropdown" style="display: none;">
+                        <!-- Match options go here -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Recommendation Engine Output -->
+              <div class="coach-recommendation-card">
+                <div class="recommendation-header">
+                  <div class="coach-avatar">
+                    <i data-lucide="sparkles"></i>
+                  </div>
+                  <div class="coach-meta">
+                    <span class="coach-name">MacroSnap AI Тренер</span>
+                    <span class="coach-tag">Персональный разбор</span>
+                  </div>
+                </div>
+                <div class="recommendation-body">
+                  <p id="coach-recommendation-text">Добавьте больше белка, чтобы поддержать мышечный тонус, и не забудьте про свежие овощи.</p>
+                </div>
+              </div>
+
+              <!-- AI Weight Estimation Reasoning Card -->
+              <div id="weight-reasoning-card" class="coach-recommendation-card weight-reasoning-card" style="display: none; margin-top: 15px; border-color: rgba(255,255,255,0.08); background: rgba(255, 255, 255, 0.02);">
+                <div class="recommendation-header">
+                  <div class="coach-avatar" style="background: linear-gradient(135deg, #10B981, #059669);">
+                    <i data-lucide="scale"></i>
+                  </div>
+                  <div class="coach-meta">
+                    <span class="coach-name" style="color: #10B981;">ИИ-расчет порции</span>
+                    <span class="coach-tag">Ориентиры и плотность</span>
+                  </div>
+                </div>
+                <div class="recommendation-body">
+                  <p id="weight-reasoning-text" style="font-style: italic; color: var(--text-secondary);"></p>
+                </div>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="result-actions">
+                <button class="btn btn-primary w-full" onclick="saveActiveMeal()">
+                  <i data-lucide="check"></i> Сохранить в дневник питания
+                </button>
+                <button class="btn btn-secondary w-full" onclick="resetScanTab()">
+                  <i data-lucide="rotate-ccw"></i> Сбросить
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Global Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <!-- TensorFlow.js and MobileNet model loaded via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+  
+  <!-- Main Application Logic Script -->
+  <script src="app.js?v=3.2"></script>
+</body>
+</html>
