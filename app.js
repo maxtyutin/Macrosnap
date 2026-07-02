@@ -1,6 +1,9 @@
 // Intercept browser logs and send them to the server
 function sendBrowserLog(message) {
-  fetch("http://localhost:8888/api/log", {
+  const isFile = window.location.protocol === "file:" || window.location.hostname === "";
+  const endpoint = isFile ? "http://localhost:8888/api/log" : "/api/log";
+  
+  fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message: message })
@@ -38,6 +41,16 @@ console.log = function(...args) {
   sendBrowserLog(`console.log: ${serialized}`);
   originalConsoleLog.apply(console, args);
 };
+
+// Environment helper to detect localhost and local network connections (e.g. testing from mobile phone)
+function isLocalEnvironment() {
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || 
+         hostname === "127.0.0.1" || 
+         hostname.startsWith("192.168.") || 
+         hostname.startsWith("10.") || 
+         (hostname.startsWith("172.") && parseInt(hostname.split(".")[1]) >= 16 && parseInt(hostname.split(".")[1]) <= 31);
+}
 
 // 1. Embedded Gemini API Configuration
 const GEMINI_API_KEY = "AIzaSyAkVJfTnwZ4GnEEmD8SsCY86gjL_xwPw70";
@@ -486,6 +499,8 @@ function initTensorFlowModel() {
 }
 
 // ================= WEBCAM & INPUTS =================
+let cameraStream = null;
+
 function startWebcam() {
   const video = document.getElementById("webcam-preview");
   const container = document.getElementById("camera-container");
@@ -1526,14 +1541,14 @@ function callGeminiVisionAPI(imageSrc, apiKey, mealName) {
       const base64Data = resizedImageSrc.split(",")[1];
       const mimeType = resizedImageSrc.split(";")[0].split(":")[1] || "image/jpeg";
       
-      let apiEndpoint = "";
-      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-        apiEndpoint = "/api/gemini";
-      } else if (window.location.protocol === "file:" || window.location.hostname === "") {
-        apiEndpoint = "http://localhost:8888/api/gemini";
-      } else {
-        apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
-      }
+       let apiEndpoint = "";
+       if (isLocalEnvironment()) {
+         apiEndpoint = "/api/gemini";
+       } else if (window.location.protocol === "file:" || window.location.hostname === "") {
+         apiEndpoint = "http://localhost:8888/api/gemini";
+       } else {
+         apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+       }
       
       // We ask Gemini to estimate nutrients directly, enabling analysis of ANY food in the world!
       const promptText = `Анализируй это изображение еды. Твоя главная задача — максимально точно оценить вес (в граммах) каждого ингредиента на тарелке и его пищевую ценность на 100г.
@@ -1729,16 +1744,19 @@ function submitAuthEmail() {
   }
 
   tempEmail = emailInput;
-  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const isFile = window.location.protocol === "file:" || window.location.hostname === "";
+  const isLocal = isLocalEnvironment();
   
   // Disable button while sending
   const sendBtn = document.getElementById("auth-email-btn");
   sendBtn.disabled = true;
   sendBtn.innerText = "Отправка...";
 
-  if (isLocal) {
+  if (isFile || isLocal) {
+    const endpoint = isFile ? "http://localhost:8888/api/send-code" : "/api/send-code";
+    
     // Call server to send verification code
-    fetch("http://localhost:8888/api/send-code", {
+    fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: tempEmail })
