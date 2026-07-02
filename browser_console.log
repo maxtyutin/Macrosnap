@@ -51,3 +51,11 @@ window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://l
 window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3
 window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3
 window.onerror: Uncaught ReferenceError: cameraStream is not defined at http://localhost:8888/app.js?v=3.6:511:3
+console.error: Gemini API Error: Error: HTTP Error 404: Not Found
+Error: HTTP Error 404: Not Found
+    at http://localhost:8888/app.js?v=4.1:1621:17
+console.log: Color spectrum breakdown: {"pGreen":0.06775067750677506,"pRed":0.3319783197831978,"pWhite":0.2086720867208672,"pBrown":0.3888888888888889,"pYellow":0.0027100271002710027}
+console.error: Gemini API Error: Error: HTTP Error 404: Not Found
+Error: HTTP Error 404: Not Found
+    at http://localhost:8888/app.js?v=4.1:1621:17
+console.log: Color spectrum breakdown: {"pGreen":0,"pRed":0.18466522678185746,"pWhite":0.28293736501079914,"pBrown":0.4611231101511879,"pYellow":0.07127429805615551}
