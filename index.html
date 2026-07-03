@@ -2,9 +2,14 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>MacroSnap AI — Трекер питания по фото</title>
   <meta name="description" content="Умный трекер калорий и макронутриентов. Сфотографируйте еду, а наш ИИ определит ингредиенты, вес, калории и даст персональные рекомендации!">
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MacroSnap AI">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css?v=5.4">
   <!-- Google Fonts: Outfit and Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -741,6 +746,40 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ================= iOS INSTALL PWA TOOLTIP ================= -->
+  <div id="ios-install-prompt" class="ios-install-overlay" style="display: none;">
+    <div class="ios-install-card">
+      <div class="ios-install-header">
+        <div class="ios-install-logo">
+          <img src="images/apple-touch-icon.png" alt="MacroSnap AI">
+        </div>
+        <div class="ios-install-title-box">
+          <div class="ios-install-title">Установить MacroSnap AI</div>
+          <div class="ios-install-subtitle">Добавьте на домашний экран</div>
+        </div>
+        <button class="ios-install-close" onclick="dismissIosInstallPrompt()">&times;</button>
+      </div>
+      <div class="ios-install-body">
+        <p>Установите приложение на ваш iPhone для быстрого доступа и полноэкранного режима:</p>
+        <div class="ios-install-steps">
+          <div class="ios-install-step">
+            <span class="step-num">1</span>
+            <span class="step-text">Нажмите кнопку <strong>«Поделиться»</strong> <span class="ios-share-icon"><i data-lucide="share"></i></span> (внизу экрана Safari).</span>
+          </div>
+          <div class="ios-install-step">
+            <span class="step-num">2</span>
+            <span class="step-text">Прокрутите меню вниз и выберите <strong>«На экран "Домой"»</strong> <span class="ios-plus-icon"><i data-lucide="plus-square"></i></span>.</span>
+          </div>
+          <div class="ios-install-step">
+            <span class="step-num">3</span>
+            <span class="step-text">Нажмите <strong>«Добавить»</strong> в верхнем правом углу.</span>
+          </div>
+        </div>
+      </div>
+      <div class="ios-install-arrow"></div>
     </div>
   </div>
 

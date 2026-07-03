@@ -20,7 +20,7 @@ const options = { weekday: 'long', month: 'long', day: 'numeric' };
 document.getElementById('date-text').innerText = new Date().toLocaleDateString('ru-RU', options);
 
 // Load App
-document.addEventListener('DOMContentLoaded', () => {
+function loadApp() {
   // Switch theme colors from Telegram if available
   if (tg) {
     document.documentElement.style.setProperty('--tg-bg', tg.colorScheme === 'dark' ? '#1c1c1e' : '#f4f4f5');
@@ -32,7 +32,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fetchUserData();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadApp);
+} else {
+  loadApp();
+}
 
 // Fetch user data from server sync
 function fetchUserData() {

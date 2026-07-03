@@ -1,0 +1,27 @@
+{
+  "name": "MacroSnap AI — Трекер питания",
+  "short_name": "MacroSnap AI",
+  "description": "Умный трекер калорий и макронутриентов по фото с ИИ Gemini",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0b0b0f",
+  "theme_color": "#0b0b0f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "images/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

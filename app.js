@@ -276,6 +276,10 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Initialize Telegram Mini App context & backend database sync
   initTelegramAndSync();
+  
+  // PWA & iOS install prompt initialization
+  registerServiceWorker();
+  detectAndShowIosInstallPrompt();
 });
 
 // ================= LOCAL STORAGE =================
@@ -2447,3 +2451,46 @@ function saveAndSyncUser() {
   })
   .catch(err => console.error("Sync state sending failed:", err));
 }
+
+// ================= PWA & iOS INSTALL TOOLTIP LOGIC =================
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('Service Worker registered successfully with scope:', reg.scope))
+        .catch(err => console.error('Service Worker registration failed:', err));
+    });
+  }
+}
+
+function detectAndShowIosInstallPrompt() {
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  const isDismissed = localStorage.getItem('ios_install_prompt_dismissed') === 'true';
+  
+  console.log(`[PWA Detect] isIos: ${isIos}, isSafari: ${isSafari}, isStandalone: ${isStandalone}, isDismissed: ${isDismissed}`);
+  
+  if (isIos && isSafari && !isStandalone && !isDismissed) {
+    // Show prompt after a short delay to let the page load smoothly
+    setTimeout(() => {
+      const prompt = document.getElementById('ios-install-prompt');
+      if (prompt) {
+        prompt.style.display = 'flex';
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }
+    }, 1500);
+  }
+}
+
+function dismissIosInstallPrompt() {
+  const prompt = document.getElementById('ios-install-prompt');
+  if (prompt) {
+    prompt.style.display = 'none';
+  }
+  localStorage.setItem('ios_install_prompt_dismissed', 'true');
+}
+

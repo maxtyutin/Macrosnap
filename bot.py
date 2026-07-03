@@ -11,7 +11,7 @@ import datetime
 # Global memory cache for temporary meal states before saving
 temp_meals = {}
 
-DB_FILE = "users_data.json"
+DB_FILE = os.environ.get("DB_FILE_PATH", "users_data.json")
 
 # Default Gemini API Key (obfuscated as in frontend)
 PART_A = "AIzaSyBrjH5Jtqm98P"
