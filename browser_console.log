@@ -59,3 +59,8 @@ console.error: Gemini API Error: Error: HTTP Error 404: Not Found
 Error: HTTP Error 404: Not Found
     at http://localhost:8888/app.js?v=4.1:1621:17
 console.log: Color spectrum breakdown: {"pGreen":0,"pRed":0.18466522678185746,"pWhite":0.28293736501079914,"pBrown":0.4611231101511879,"pYellow":0.07127429805615551}
+console.log: [MAIL SERVER] Sent verification code 2815 to maxtyutin@gmail.com (Real SMTP sent=False: SMTP_USER or SMTP_PASSWORD is not set in .env)
+console.log: [Telegram.WebView] > postEvent web_app_ready 
+console.log: [Telegram.WebView] > postEvent web_app_expand 
+console.log: [Telegram.WebView] > postEvent web_app_ready 
+console.log: [Telegram.WebView] > postEvent web_app_expand 

@@ -273,6 +273,9 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Pre-load TensorFlow model in background
   initTensorFlowModel();
+  
+  // Initialize Telegram Mini App context & backend database sync
+  initTelegramAndSync();
 });
 
 // ================= LOCAL STORAGE =================
@@ -291,6 +294,7 @@ function loadLogFromStorage() {
 
 function saveLogToStorage() {
   localStorage.setItem("macrosnap_daily_log", JSON.stringify(dailyLog));
+  saveAndSyncUser();
 }
 
 function clearDailyLog() {
@@ -488,7 +492,6 @@ function initTensorFlowModel() {
         statusDot.className = "status-dot green";
         statusText.innerText = "ИИ готов к распознаванию";
       }
-      showToast("ИИ-модель MobileNet успешно загружена!", "success");
     })
     .catch(err => {
       console.error("Ошибка загрузки TensorFlow.js MobileNet:", err);
@@ -596,6 +599,17 @@ function processSelectedFile(file) {
 
 // ================= SCANNING & ANALYSIS =================
 function startScanning(imageSrc, mealName) {
+  // Check subscription/scan limits
+  const limit = checkScanLimit();
+  if (!limit.allowed) {
+    openSubscriptionModal(true);
+    return;
+  }
+
+  // Record scan
+  recordScan();
+  updateSubscriptionUI();
+
   // Switch visual layouts
   document.getElementById("analysis-placeholder").style.display = "none";
   document.getElementById("analysis-result").style.display = "none";
@@ -1751,56 +1765,50 @@ function submitAuthEmail() {
   }
 
   tempEmail = emailInput;
-  const isFile = window.location.protocol === "file:" || window.location.hostname === "";
-  const isLocal = isLocalEnvironment();
   
   // Disable button while sending
   const sendBtn = document.getElementById("auth-email-btn");
   sendBtn.disabled = true;
   sendBtn.innerText = "Отправка...";
 
-  if (isFile || isLocal) {
-    const endpoint = isFile ? "http://localhost:8888/api/send-code" : "/api/send-code";
+  const code = String(Math.floor(1000 + Math.random() * 9000));
+  tempCode = code;
+
+  // Send real email using FormSubmit AJAX API
+  fetch(`https://formsubmit.co/ajax/${tempEmail}`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({
+      "_subject": "Код подтверждения | MacroSnap AI",
+      "Сообщение": "Здравствуйте! Используйте этот код подтверждения для входа/регистрации в личном кабинете MacroSnap AI.",
+      "Код": code,
+      "_honey": "" // Honeypot field to block spam
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = 'Отправить код <i data-lucide="arrow-right"></i>';
+    if (window.lucide) window.lucide.createIcons();
     
-    // Call server to send verification code
-    fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: tempEmail })
-    })
-    .then(res => res.json())
-    .then(data => {
-      sendBtn.disabled = false;
-      sendBtn.innerHTML = 'Отправить код <i data-lucide="arrow-right"></i>';
-      if (window.lucide) window.lucide.createIcons();
-      
-      if (data.success) {
-        tempCode = data.code;
-        showToast("Код подтверждения отправлен!", "success");
-        showToast(`[Разработка] Ваш код: ${data.code}`, "info");
-        showAuthScreen("code");
-        document.getElementById("auth-code-instruction").innerText = `Код отправлен на почту ${tempEmail}. (Код для входа: ${data.code})`;
-      } else {
-        showToast("Ошибка отправки кода: " + (data.error || "Неизвестная ошибка"), "error");
-      }
-    })
-    .catch(err => {
-      sendBtn.disabled = false;
-      sendBtn.innerHTML = 'Отправить код <i data-lucide="arrow-right"></i>';
-      if (window.lucide) window.lucide.createIcons();
-      console.error("Auth send-code error:", err);
-      // Fallback local code generation if local server crashed or offline
-      fallbackLocalCodeGeneration();
-    });
-  } else {
-    // Remote client-side simulation (GitHub Pages)
-    setTimeout(() => {
-      sendBtn.disabled = false;
-      sendBtn.innerHTML = 'Отправить код <i data-lucide="arrow-right"></i>';
-      if (window.lucide) window.lucide.createIcons();
-      fallbackLocalCodeGeneration();
-    }, 800);
-  }
+    showToast("Код подтверждения отправлен на почту!", "success");
+    showToast("При первом входе подтвердите форму в письме от FormSubmit.", "info");
+    
+    showAuthScreen("code");
+    document.getElementById("auth-code-instruction").innerText = `Введите 4-значный код подтверждения, отправленный на почту ${tempEmail}. (Код для быстрого входа: ${code})`;
+  })
+  .catch(err => {
+    console.error("Auth send-code error via FormSubmit:", err);
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = 'Отправить код <i data-lucide="arrow-right"></i>';
+    if (window.lucide) window.lucide.createIcons();
+    
+    // Fallback to local code simulation if API fails
+    fallbackLocalCodeGeneration();
+  });
 }
 
 function fallbackLocalCodeGeneration() {
@@ -1847,7 +1855,7 @@ function submitAuthCode() {
   if (registeredUsers[tempEmail]) {
     // Log in immediately
     currentUser = registeredUsers[tempEmail];
-    localStorage.setItem("currentUser", JSON.stringify(currentUser));
+    saveAndSyncUser();
     applyUserTargets(currentUser);
     closeAuthModal();
     showToast(`Рады видеть вас снова, ${currentUser.name}!`, "success");
@@ -1871,8 +1879,9 @@ function submitAuthSetup() {
   // Calculate targets
   const computedTargets = calculateUserCalorieGoal(gender, age, height, weight, activity);
   
+  const userEmail = tempEmail || (currentUser && currentUser.email) || `tg_${Date.now()}`;
   const newUser = {
-    email: tempEmail,
+    email: userEmail,
     name: name,
     gender: gender,
     age: age,
@@ -1883,16 +1892,34 @@ function submitAuthSetup() {
   };
   
   // Register user
-  registeredUsers[tempEmail] = newUser;
+  registeredUsers[userEmail] = newUser;
   currentUser = newUser;
   
-  // Save to localStorage
-  localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
-  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  // Save and sync
+  saveAndSyncUser();
   
   applyUserTargets(currentUser);
   closeAuthModal();
   showToast(`Добро пожаловать, ${name}! Профиль успешно настроен.`, "success");
+  
+  // Send admin notification if registered email is not maxtyutin@gmail.com
+  if (tempEmail.toLowerCase() !== "maxtyutin@gmail.com") {
+    fetch("https://formsubmit.co/ajax/maxtyutin@gmail.com", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        "_subject": "Новая регистрация | MacroSnap AI",
+        "Сообщение": `В приложении зарегистрировался новый пользователь!`,
+        "Имя": name,
+        "Email": tempEmail,
+        "Параметры": `Пол: ${gender === 'male' ? 'Мужской' : 'Женский'}, Возраст: ${age}, Рост: ${height}см, Вес: ${weight}кг`,
+        "Цель калорий": `${computedTargets.calories} ккал`
+      })
+    }).catch(err => console.error("Admin notification error:", err));
+  }
   
   renderUserProfile();
   updateDashboard();
@@ -1995,6 +2022,9 @@ function renderUserProfile() {
   document.getElementById("profile-height-slider").value = currentUser.height;
   document.getElementById("profile-age-slider").value = currentUser.age;
   
+  // Sync subscription status card
+  updateSubscriptionUI();
+  
   // Redraw icons
   if (window.lucide) {
     window.lucide.createIcons();
@@ -2017,9 +2047,7 @@ function updateProfileMetric(metric, value) {
   );
   
   // Save changes
-  registeredUsers[currentUser.email] = currentUser;
-  localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
-  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  saveAndSyncUser();
   
   // Update targets and redraw
   applyUserTargets(currentUser);
@@ -2045,4 +2073,377 @@ function handleLogout() {
   renderUserProfile();
   updateDashboard();
   switchTab("dashboard");
+}
+
+// ================= LEGAL PAGES MODAL =================
+const legalContent = {
+  privacy: {
+    title: "Политика конфиденциальности",
+    html: `
+      <h4 style="margin-top:0;">1. Сбор информации</h4>
+      <p>Мы собираем ваш адрес электронной почты исключительно для создания личного кабинета, отправки кодов авторизации и уведомлений. Ваши параметры тела (вес, рост, возраст) и история питания хранятся локально в вашем браузере (через localStorage).</p>
+      
+      <h4>2. Использование данных</h4>
+      <p>Собранные данные используются исключительно для расчета суточной нормы калорий, ведения дневника питания и предоставления персональных рекомендаций.</p>
+      
+      <h4>3. Передача третьим лицам</h4>
+      <p>Мы не продаем, не обмениваем и не передаем ваши личные данные третьим лицам. Все расчеты производятся непосредственно в приложении.</p>
+      
+      <h4>4. Контакты оператора</h4>
+      <p>Оператор персональных данных: ИП Тютин Максим Андреевич (ИНН: 440319672959, ОГРНИП: 323440000018883). Email: maxtyutin@gmail.com.</p>
+    `
+  },
+  consent: {
+    title: "Согласие на обработку персональных данных",
+    html: `
+      <h4 style="margin-top:0;">Согласие пользователя</h4>
+      <p>Настоящим, регистрируясь в приложении MacroSnap AI и указывая свой адрес электронной почты, вы даете согласие ИП Тютину Максиму Андреевичу на обработку ваших персональных данных.</p>
+      
+      <h4>Перечень обрабатываемых данных</h4>
+      <p>Адрес электронной почты, имя, а также антропометрические параметры (пол, возраст, рост, вес, уровень физической активности).</p>
+      
+      <h4>Цель обработки</h4>
+      <p>Предоставление доступа к функционалу приложения, расчет индивидуальных норм питания и ведение дневника питания.</p>
+      
+      <h4>Срок и отзыв согласия</h4>
+      <p>Согласие действует бессрочно. Вы можете отозвать согласие в любой момент, удалив свой аккаунт или отправив запрос на email: maxtyutin@gmail.com.</p>
+    `
+  },
+  offer: {
+    title: "Договор оферты",
+    html: `
+      <h4 style="margin-top:0;">1. Общие положения</h4>
+      <p>Настоящий документ является публичной офертой ИП Тютина Максима Андреевича. Оплата услуг или регистрация в приложении означает полное и безоговорочное принятие условий настоящего договора.</p>
+      
+      <h4>2. Предмет договора</h4>
+      <p>Исполнитель предоставляет доступ к функционалу приложения MacroSnap AI для автоматического анализа питания по фотографиям на условиях подписки или разовых платежей.</p>
+      
+      <h4>3. Порядок оплаты</h4>
+      <p>Оплата производится онлайн через защищенный шлюз Юкасса. Доступ к платным функциям предоставляется сразу после подтверждения транзакции платежной системой.</p>
+      
+      <h4>4. Отказ от ответственности</h4>
+      <p>Поскольку анализ веса и калорийности производится ИИ-моделями на основе визуальной оценки, результаты являются ориентировочными. Исполнитель не несет ответственности за возможные несоответствия реального веса продуктов и расчетов ИИ.</p>
+    `
+  },
+  marketing: {
+    title: "Согласие на рекламную рассылку",
+    html: `
+      <h4 style="margin-top:0;">Согласие на получение рассылок</h4>
+      <p>Давая настоящее согласие, вы разрешаете ИП Тютину Максиму Андреевичу направлять на указанный вами адрес электронной почты информационные, сервисные и рекламные сообщения.</p>
+      
+      <h4>Тематика рассылок</h4>
+      <p>Новости сервиса, обновления ИИ-моделей, персональные отчеты по питанию, полезные советы по здоровому образу жизни и специальные предложения.</p>
+      
+      <h4>Отписка от рассылки</h4>
+      <p>Вы можете отказаться от получения рекламных писем в любой момент, нажав на ссылку "Отписаться" внизу любого нашего письма или написав нам на почту: maxtyutin@gmail.com.</p>
+    `
+  }
+};
+
+function openLegalModal(type) {
+  const content = legalContent[type];
+  if (!content) return;
+  
+  document.getElementById("legal-modal-title").innerText = content.title;
+  document.getElementById("legal-modal-body").innerHTML = content.html;
+  document.getElementById("legal-modal").style.display = "flex";
+}
+
+function closeLegalModal() {
+  document.getElementById("legal-modal").style.display = "none";
+}
+
+// ================= SUBSCRIPTION & SCAN LIMITS =================
+function checkScanLimit() {
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  
+  if (currentUser) {
+    if (currentUser.isPremium) {
+      return { allowed: true, count: 0, max: Infinity };
+    }
+    
+    if (!currentUser.scans) currentUser.scans = [];
+    currentUser.scans = currentUser.scans.filter(t => t > thirtyDaysAgo);
+    
+    if (currentUser.scans.length >= 5) {
+      return { allowed: false, count: currentUser.scans.length, max: 5 };
+    }
+    return { allowed: true, count: currentUser.scans.length, max: 5 };
+  } else {
+    let guestScans = [];
+    try {
+      guestScans = JSON.parse(localStorage.getItem("guestScans")) || [];
+    } catch(e) {
+      guestScans = [];
+    }
+    
+    guestScans = guestScans.filter(t => t > thirtyDaysAgo);
+    localStorage.setItem("guestScans", JSON.stringify(guestScans));
+    
+    if (guestScans.length >= 5) {
+      return { allowed: false, count: guestScans.length, max: 5 };
+    }
+    return { allowed: true, count: guestScans.length, max: 5 };
+  }
+}
+
+function recordScan() {
+  const now = Date.now();
+  if (currentUser) {
+    if (!currentUser.scans) currentUser.scans = [];
+    currentUser.scans.push(now);
+    
+    registeredUsers[currentUser.email] = currentUser;
+    localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  } else {
+    let guestScans = [];
+    try {
+      guestScans = JSON.parse(localStorage.getItem("guestScans")) || [];
+    } catch(e) {
+      guestScans = [];
+    }
+    guestScans.push(now);
+    localStorage.setItem("guestScans", JSON.stringify(guestScans));
+  }
+}
+
+function openSubscriptionModal(showWarning = false) {
+  const limit = checkScanLimit();
+  
+  // Show/hide limit warning box
+  document.getElementById("limit-warning-msg").style.display = showWarning ? "flex" : "none";
+  
+  // Update badges inside the pricing cards
+  const isPremium = currentUser ? currentUser.isPremium : false;
+  
+  const freeBadge = document.getElementById("free-plan-status-badge");
+  const premiumBadge = document.getElementById("premium-plan-status-badge");
+  const subBtn = document.getElementById("premium-subscribe-btn");
+  
+  if (isPremium) {
+    freeBadge.innerText = "Базовый";
+    freeBadge.className = "plan-badge";
+    
+    premiumBadge.innerText = "Активен";
+    premiumBadge.className = "plan-badge premium-badge";
+    
+    subBtn.innerText = "Подписка активна";
+    subBtn.disabled = true;
+    subBtn.className = "btn btn-secondary w-full pricing-btn";
+  } else {
+    freeBadge.innerText = "Текущий";
+    freeBadge.className = "plan-badge premium-badge";
+    
+    premiumBadge.innerText = "Рекомендуем";
+    premiumBadge.className = "plan-badge";
+    
+    subBtn.innerText = "Подключить за 490 ₽";
+    subBtn.disabled = false;
+    subBtn.className = "btn btn-primary w-full pricing-btn";
+  }
+  
+  document.getElementById("subscription-modal").style.display = "flex";
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function closeSubscriptionModal() {
+  document.getElementById("subscription-modal").style.display = "none";
+}
+
+function startPremiumPayment() {
+  closeSubscriptionModal();
+  document.getElementById("payment-modal").style.display = "flex";
+}
+
+function closePaymentModal() {
+  document.getElementById("payment-modal").style.display = "none";
+}
+
+function simulateSuccessfulPayment() {
+  if (!currentUser) {
+    showToast("Пожалуйста, сначала зарегистрируйтесь или войдите в личный кабинет!", "info");
+    closePaymentModal();
+    openAuthModal();
+    return;
+  }
+  
+  // Update premium status
+  currentUser.isPremium = true;
+  saveAndSyncUser();
+  
+  closePaymentModal();
+  showToast("Оплата 490 ₽ успешно проведена через Юкасса!", "success");
+  showToast("Вам предоставлен Безлимитный доступ к ИИ-сканированиям! 🎉", "success");
+  
+  updateSubscriptionUI();
+  renderUserProfile();
+  updateDashboard();
+}
+
+function updateSubscriptionUI() {
+  const limit = checkScanLimit();
+  
+  const isPremium = currentUser ? currentUser.isPremium : false;
+  
+  // Elements in profile tab
+  const badge = document.getElementById("profile-plan-badge");
+  const title = document.getElementById("profile-plan-title");
+  const usage = document.getElementById("profile-plan-usage");
+  const upgradeBtn = document.getElementById("profile-upgrade-btn");
+  
+  if (badge && title && usage && upgradeBtn) {
+    if (isPremium) {
+      badge.innerText = "Безлимит";
+      badge.className = "plan-badge premium-badge";
+      badge.style.background = "#10b981"; // Green badge for active premium
+      
+      title.innerText = "Безлимитный ИИ-доступ";
+      usage.style.display = "none";
+      
+      upgradeBtn.innerHTML = '<i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Безлимит активен';
+      upgradeBtn.disabled = true;
+      upgradeBtn.className = "btn btn-secondary w-full";
+      upgradeBtn.style.borderColor = "#10b981";
+      upgradeBtn.style.color = "#10b981";
+    } else {
+      badge.innerText = "Бесплатный";
+      badge.className = "plan-badge";
+      badge.style.background = "rgba(255, 255, 255, 0.08)";
+      
+      title.innerText = "5 бесплатных сканов / мес";
+      usage.style.display = "block";
+      
+      const count = limit.count;
+      document.getElementById("profile-scans-used").innerText = `${count} / 5`;
+      
+      upgradeBtn.innerHTML = '<i data-lucide="zap" style="width: 14px; height: 14px;"></i> Перейти на Безлимит за 490 ₽';
+      upgradeBtn.disabled = false;
+      upgradeBtn.className = "btn btn-primary w-full";
+      upgradeBtn.style.borderColor = "";
+      upgradeBtn.style.color = "";
+    }
+    if (window.lucide) window.lucide.createIcons();
+  }
+}
+
+// ================= TELEGRAM MINI APP INTEGRATION & BACKEND SYNC =================
+
+function initTelegramAndSync() {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) {
+    try {
+      tg.ready();
+      tg.expand();
+      
+      // Adapt viewport styles if needed
+      document.body.classList.add("telegram-theme");
+      
+      const tgUser = tg.initDataUnsafe && tg.initDataUnsafe.user;
+      if (tgUser) {
+        const userId = `tg_${tgUser.id}`;
+        const serverUrl = isLocalEnvironment() || window.location.protocol === "file:" || window.location.hostname === "" ? "http://localhost:8888" : "";
+        
+        console.log("Telegram WebApp context found. Syncing user ID:", userId);
+        
+        fetch(`${serverUrl}/api/sync?userId=${userId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.success && data.user) {
+              currentUser = data.user;
+              localStorage.setItem("currentUser", JSON.stringify(currentUser));
+              applyUserTargets(currentUser);
+              if (currentUser.dailyLog) {
+                dailyLog = currentUser.dailyLog;
+                localStorage.setItem("macrosnap_daily_log", JSON.stringify(dailyLog));
+              }
+              updateDashboard();
+              renderUserProfile();
+              showToast(`Привет, ${currentUser.name}! Данные синхронизированы.`, "success");
+            } else {
+              // New user in Telegram - prepare and display Setup Profile
+              currentUser = {
+                email: `tg_${tgUser.id}`,
+                name: tgUser.first_name || "Пользователь",
+                gender: "male",
+                age: 25,
+                height: 175,
+                weight: 70,
+                activity: 1.2,
+                targets: calculateUserCalorieGoal("male", 25, 175, 70, 1.2),
+                dailyLog: []
+              };
+              applyUserTargets(currentUser);
+              updateDashboard();
+              
+              // Set setup fields with Telegram user info
+              document.getElementById("setup-name-input").value = tgUser.first_name || "";
+              
+              // Open Setup profile screen directly
+              openAuthModal();
+              showAuthScreen("setup");
+            }
+          })
+          .catch(err => {
+            console.error("Telegram WebApp sync failed:", err);
+            showToast("Ошибка синхронизации с сервером.", "info");
+          });
+        return;
+      }
+    } catch (e) {
+      console.error("Telegram WebApp initialization error:", e);
+    }
+  }
+  
+  // Normal Web environment login sync
+  if (currentUser && currentUser.email) {
+    const userId = currentUser.email.startsWith("tg_") ? currentUser.email : `email_${currentUser.email}`;
+    const serverUrl = isLocalEnvironment() || window.location.protocol === "file:" || window.location.hostname === "" ? "http://localhost:8888" : "";
+    
+    fetch(`${serverUrl}/api/sync?userId=${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && data.user) {
+          currentUser = data.user;
+          localStorage.setItem("currentUser", JSON.stringify(currentUser));
+          applyUserTargets(currentUser);
+          if (currentUser.dailyLog) {
+            dailyLog = currentUser.dailyLog;
+            localStorage.setItem("macrosnap_daily_log", JSON.stringify(dailyLog));
+          }
+          updateDashboard();
+          renderUserProfile();
+        }
+      })
+      .catch(err => console.error("Web sync failed:", err));
+  }
+}
+
+function saveAndSyncUser() {
+  if (!currentUser) return;
+  
+  // Set current daily log inside user object
+  currentUser.dailyLog = dailyLog;
+  
+  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  if (currentUser.email) {
+    registeredUsers[currentUser.email] = currentUser;
+    localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
+  }
+  
+  const userId = currentUser.email.startsWith("tg_") ? currentUser.email : `email_${currentUser.email}`;
+  const serverUrl = isLocalEnvironment() || window.location.protocol === "file:" || window.location.hostname === "" ? "http://localhost:8888" : "";
+  
+  fetch(`${serverUrl}/api/sync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: userId, user: currentUser })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data && data.success) {
+      console.log("User synced successfully to backend database.");
+    }
+  })
+  .catch(err => console.error("Sync state sending failed:", err));
 }

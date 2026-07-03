@@ -1,0 +1,60 @@
+{
+  "tg_1117298361": {
+    "email": "tg_1117298361",
+    "name": "Maksim",
+    "gender": "male",
+    "age": 25,
+    "height": 175,
+    "weight": 70,
+    "activity": 1.2,
+    "targets": {
+      "bmr": 1650,
+      "calories": 2000,
+      "protein": 130,
+      "carbs": 240,
+      "fats": 65,
+      "fiber": 30
+    },
+    "isPremium": false,
+    "scans": [
+      1783035195.487377
+    ],
+    "dailyLog": [
+      {
+        "name": "Лосось с рисом и сливочным соусом",
+        "image": "images/uploads/tg_5e2bf00b26e24b4592ee68cac1f80804.jpg",
+        "ingredients": [
+          {
+            "name": "Лосось жареный/запеченный",
+            "weight": 180,
+            "calories": 206,
+            "protein": 20.4,
+            "carbs": 0.0,
+            "fats": 12.4,
+            "fiber": 0.0
+          },
+          {
+            "name": "Рис белый отварной",
+            "weight": 180,
+            "calories": 130,
+            "protein": 2.7,
+            "carbs": 28.0,
+            "fats": 0.3,
+            "fiber": 0.4
+          },
+          {
+            "name": "Сливочный соус (условно, с грибами)",
+            "weight": 60,
+            "calories": 120,
+            "protein": 3.0,
+            "carbs": 7.0,
+            "fats": 10.0,
+            "fiber": 0.5
+          }
+        ],
+        "time": "02:33"
+      }
+    ],
+    "state": ""
+  }
+}

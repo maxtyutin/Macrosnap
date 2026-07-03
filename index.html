@@ -5,13 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MacroSnap AI — Трекер питания по фото</title>
   <meta name="description" content="Умный трекер калорий и макронутриентов. Сфотографируйте еду, а наш ИИ определит ингредиенты, вес, калории и даст персональные рекомендации!">
-  <link rel="stylesheet" href="styles.css?v=4.2">
+  <link rel="stylesheet" href="styles.css?v=5.4">
   <!-- Google Fonts: Outfit and Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Lucide Icons (CDN) for UI Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -408,7 +410,7 @@
 
       <!-- ================= PROFILE TAB ================= -->
       <section id="tab-profile" class="tab-content">
-        <div class="dashboard-grid">
+        <div class="profile-container">
           
           <!-- User Profile Card -->
           <div class="card profile-card" id="profile-logged-view" style="display: none;">
@@ -472,6 +474,21 @@
               </div>
             </div>
 
+            <!-- Subscription / Premium Status Box -->
+            <div id="profile-subscription-card" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: bold;">Тарифный план</span>
+                <span id="profile-plan-badge" class="plan-badge premium-badge" style="margin: 0; padding: 2px 8px; border-radius: 12px; font-size: 10px;">Бесплатный</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; flex-wrap: wrap; gap: 8px;">
+                <h4 id="profile-plan-title" style="margin: 0; font-size: 15px; font-weight: 700;">5 бесплатных сканов / мес</h4>
+                <div id="profile-plan-usage" style="font-size: 13px; color: var(--text-secondary);">Использовано: <span id="profile-scans-used" style="font-weight: bold; color: var(--text-primary);">0 / 5</span></div>
+              </div>
+              <button class="btn btn-primary w-full" id="profile-upgrade-btn" onclick="openSubscriptionModal()" style="padding: 10px 16px; font-size: 13px; gap: 8px; justify-content: center;">
+                <i data-lucide="zap" style="width: 14px; height: 14px;"></i> Перейти на Безлимит за 490 ₽
+              </button>
+            </div>
+
             <!-- Log out -->
             <button class="btn btn-secondary w-full" onclick="handleLogout()" style="border-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
               <i data-lucide="log-out"></i> Выйти из аккаунта
@@ -494,6 +511,32 @@
       </section>
 
     </main>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <h3 class="footer-title">MacroSnap AI</h3>
+        
+        <div class="footer-info-text">
+          <p>ИП Тютин Максим Андреевич &middot; ИНН 4403 1967 2959 &middot; ОГРНИП 32344 00000 18883</p>
+          <p>Email: <a href="mailto:maxtyutin@gmail.com">maxtyutin@gmail.com</a> &middot; Тел: <a href="tel:+79159214060">+7 (915) 921-40-60</a></p>
+          <p class="payment-info">Оплата производится онлайн через защищенный шлюз Юкасса</p>
+        </div>
+
+        <div class="footer-links-grid">
+          <div class="footer-links-row">
+            <a href="#" onclick="openLegalModal('privacy'); return false;">ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ</a>
+            <a href="#" onclick="openLegalModal('consent'); return false;">СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ</a>
+            <a href="#" onclick="openLegalModal('offer'); return false;">ДОГОВОР ОФЕРТЫ</a>
+          </div>
+          <div class="footer-links-row">
+            <a href="#" onclick="openLegalModal('marketing'); return false;">СОГЛАСИЕ НА РЕКЛАМНУЮ РАССЫЛКУ</a>
+          </div>
+        </div>
+
+        <p class="footer-copyright">&copy; 2026 MacroSnap AI &middot; ВСЕ ПРАВА ЗАЩИЩЕНЫ</p>
+      </div>
+    </footer>
 
     <!-- ================= AUTH & REGISTRATION MODAL ================= -->
     <div id="auth-modal" class="modal-overlay" style="display: none;">
@@ -587,6 +630,118 @@
 
     <!-- Global Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>
+    
+    <!-- ================= LEGAL MODAL ================= -->
+    <div id="legal-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card legal-modal-card">
+        <div class="modal-header">
+          <h3 id="legal-modal-title">Юридическая информация</h3>
+          <button class="modal-close" onclick="closeLegalModal()"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body" id="legal-modal-body" style="max-height: 70vh; overflow-y: auto; padding: 24px; font-size: 14px; line-height: 1.6; color: var(--text-secondary);">
+          <!-- Content dynamically loaded via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= SUBSCRIPTION MODAL ================= -->
+    <div id="subscription-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-card subscription-modal-card">
+        <div class="modal-header">
+          <h3 id="subscription-modal-title">Выберите тариф</h3>
+          <button class="modal-close" onclick="closeSubscriptionModal()"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+          <div class="limit-warning-box" id="limit-warning-msg" style="display: none; margin-bottom: 20px;">
+            <i data-lucide="alert-triangle" style="stroke: #ef4444; width: 24px; height: 24px;"></i>
+            <div>
+              <h4 style="color: #ef4444; font-size: 14px; font-weight: 700; margin: 0 0 4px 0;">Лимит сканирований превышен!</h4>
+              <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">Вы израсходовали 5 бесплатных сканирований на этот месяц. Обновите тариф для безлимитного ИИ-анализа.</p>
+            </div>
+          </div>
+
+          <div class="pricing-options">
+            <!-- Free Tier Card -->
+            <div class="pricing-card" id="pricing-card-free">
+              <div class="pricing-header" style="margin-bottom: 20px;">
+                <span class="plan-badge" id="free-plan-status-badge">Текущий</span>
+                <h4 class="plan-name">Бесплатный</h4>
+                <div class="plan-price">0 ₽ <span class="plan-period">/ мес</span></div>
+              </div>
+              <ul class="plan-features">
+                <li><i data-lucide="check" class="check-icon"></i> 5 сканирований блюд в месяц</li>
+                <li><i data-lucide="check" class="check-icon"></i> Распознавание ИИ (MobileNet)</li>
+                <li><i data-lucide="check" class="check-icon"></i> Расчет калорий и БЖУ</li>
+                <li class="disabled-feature"><i data-lucide="x" class="cross-icon"></i> Безлимитные ИИ-сканирования</li>
+              </ul>
+            </div>
+
+            <!-- Premium Tier Card -->
+            <div class="pricing-card premium-plan" id="pricing-card-premium">
+              <div class="pricing-header" style="margin-bottom: 20px;">
+                <span class="plan-badge premium-badge" id="premium-plan-status-badge">Рекомендуем</span>
+                <h4 class="plan-name">Безлимитный ИИ</h4>
+                <div class="plan-price">490 ₽ <span class="plan-period">/ мес</span></div>
+              </div>
+              <ul class="plan-features">
+                <li><i data-lucide="check" class="check-icon"></i> Абсолютный безлимит сканирований</li>
+                <li><i data-lucide="check" class="check-icon"></i> Приоритетная ИИ-обработка</li>
+                <li><i data-lucide="check" class="check-icon"></i> Персональные советы от ИИ-коуча</li>
+                <li><i data-lucide="check" class="check-icon"></i> Безопасная оплата через Юкасса</li>
+              </ul>
+              <button class="btn btn-primary w-full pricing-btn" id="premium-subscribe-btn" onclick="startPremiumPayment()">
+                Подключить за 490 ₽
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= YOOKASSA PAYMENT OVERLAY ================= -->
+    <div id="payment-modal" class="modal-overlay" style="display: none; z-index: 1200;">
+      <div class="modal-card payment-modal-card" style="max-width: 420px; background: #ffffff; color: #111111; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+        <div class="modal-header" style="border-bottom: 1px solid #e5e7eb; background: #f3f4f6; border-radius: 16px 16px 0 0; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="color: #111111; font-weight: 700; font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; font-family: 'Inter', sans-serif;">
+            <span style="background: #8b5cf6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 800;">ЮKassa</span>
+            Безопасная оплата
+          </h3>
+          <button class="modal-close" onclick="closePaymentModal()" style="color: #6b7280; background: transparent; border: none; font-size: 24px; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+        </div>
+        <div style="padding: 24px; font-family: 'Inter', sans-serif;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 13px; color: #6b7280; margin-bottom: 4px;">Получатель: ИП Тютин М. А.</div>
+            <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">Подписка: MacroSnap AI Безлимит</div>
+            <div style="font-size: 32px; font-weight: 800; color: #111111;">490.00 ₽</div>
+          </div>
+
+          <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+            <div style="font-size: 11px; color: #6b7280; margin-bottom: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Детали платежа</div>
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; font-size: 11px; color: #374151; margin-bottom: 4px; text-align: left;">Номер карты</label>
+              <input type="text" value="2200 4400 1122 3344" disabled style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: #ffffff; color: #111111; letter-spacing: 0.1em; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <div style="flex: 1;">
+                <label style="display: block; font-size: 11px; color: #374151; margin-bottom: 4px; text-align: left;">Срок действия</label>
+                <input type="text" value="12/28" disabled style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: #ffffff; color: #111111; text-align: center; box-sizing: border-box;">
+              </div>
+              <div style="width: 100px;">
+                <label style="display: block; font-size: 11px; color: #374151; margin-bottom: 4px; text-align: left;">CVC/CVV</label>
+                <input type="password" value="999" disabled style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: #ffffff; color: #111111; text-align: center; box-sizing: border-box;">
+              </div>
+            </div>
+          </div>
+
+          <button onclick="simulateSuccessfulPayment()" style="width: 100%; background: #10b981; color: white; font-weight: 700; padding: 14px; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; transition: background 0.2s;">
+            Оплатить 490.00 ₽
+          </button>
+          <div style="text-align: center; margin-top: 14px; font-size: 11px; color: #9ca3af; line-height: 1.4;">
+            Платеж защищен стандартом PCI DSS. Данные передаются в зашифрованном виде.
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- TensorFlow.js and MobileNet model loaded via CDN -->
@@ -594,6 +749,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
   
   <!-- Main Application Logic Script -->
-  <script src="app.js?v=4.2"></script>
+  <script src="app.js?v=5.4"></script>
 </body>
 </html>

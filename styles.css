@@ -257,6 +257,17 @@ body {
   border: none;
   cursor: pointer;
   transition: var(--transition-fast);
+  line-height: 1;
+}
+
+.btn i, .btn svg {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .btn-primary {
@@ -673,7 +684,7 @@ body {
 
 .demo-gallery {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
@@ -1532,6 +1543,16 @@ body {
   body {
     padding: 0 12px;
   }
+  .app-container {
+    padding: 0 12px 100px 12px;
+  }
+  .nav-btn span {
+    font-size: 12px;
+  }
+  .nav-btn i {
+    width: 16px;
+    height: 16px;
+  }
   .app-header {
     flex-direction: column;
     gap: 16px;
@@ -1544,7 +1565,8 @@ body {
   .nav-btn {
     flex: 1;
     justify-content: center;
-    padding: 10px 0;
+    padding: 10px 8px;
+    gap: 6px;
   }
   .macros-summary-grid {
     grid-template-columns: 1fr;
@@ -1954,4 +1976,280 @@ select.search-input {
 select.search-input option {
   background-color: #121214;
   color: white;
+}
+
+/* Centered Profile Tab Container */
+.profile-container {
+  max-width: 650px;
+  margin: 0 auto 40px auto;
+  width: 100%;
+}
+
+/* Override Webkit Browser Autofill (Invisible Text bugfix) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary) !important;
+  -webkit-box-shadow: 0 0 0px 1000px #16161d inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ================= FOOTER ================= */
+.app-footer {
+  margin-top: 80px;
+  padding: 60px 0 40px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  width: 100%;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.footer-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #3b82f6; /* Bright neon blue matching the image */
+  letter-spacing: 0.08em;
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+}
+
+.footer-info-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.8;
+}
+
+.footer-info-text p {
+  margin: 4px 0;
+}
+
+.footer-info-text a {
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.footer-info-text a:hover {
+  color: #3b82f6;
+}
+
+.footer-info-text .payment-info {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.25);
+  margin-top: 6px;
+}
+
+.footer-links-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0;
+  width: 100%;
+}
+
+.footer-links-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.footer-links-row a {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: var(--transition-fast);
+}
+
+.footer-links-row a:hover {
+  color: #3b82f6;
+}
+
+.footer-copyright {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.08em;
+  margin-top: 12px;
+  text-transform: uppercase;
+}
+
+/* Legal Modal */
+.legal-modal-card {
+  max-width: 650px;
+  width: 90%;
+}
+
+.legal-modal-body h4 {
+  margin-top: 20px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.legal-modal-body p {
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .footer-links-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+/* ================= SUBSCRIPTION MODAL ================= */
+.subscription-modal-card {
+  max-width: 680px;
+  width: 90%;
+}
+
+.limit-warning-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.pricing-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.pricing-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform var(--transition-medium), border-color var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.pricing-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.pricing-card.premium-plan {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border: 2px solid var(--accent-primary);
+}
+
+.pricing-card.premium-plan:hover {
+  border-color: var(--accent-light);
+  box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.3);
+}
+
+.plan-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.premium-badge {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.plan-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.plan-price {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.plan-period {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.check-icon {
+  stroke: #10b981;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.cross-icon {
+  stroke: #ef4444;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.disabled-feature {
+  color: var(--text-muted);
+}
+
+.pricing-btn {
+  margin-top: auto;
+}
+
+@media (max-width: 640px) {
+  .pricing-options {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
