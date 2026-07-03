@@ -77,5 +77,26 @@
     "isPremium": false,
     "scans": [],
     "dailyLog": []
+  },
+  "tg_673531949": {
+    "email": "tg_673531949",
+    "name": "Andrei",
+    "gender": "male",
+    "age": 25,
+    "height": 175,
+    "weight": 70,
+    "activity": 1.2,
+    "state": "",
+    "targets": {
+      "bmr": 1674,
+      "calories": 2008,
+      "protein": 151,
+      "carbs": 226,
+      "fats": 56,
+      "fiber": 28
+    },
+    "isPremium": false,
+    "scans": [],
+    "dailyLog": []
   }
 }

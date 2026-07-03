@@ -257,7 +257,7 @@ body {
   border: none;
   cursor: pointer;
   transition: var(--transition-fast);
-  line-height: 1;
+  line-height: normal;
 }
 
 .btn i, .btn svg {
@@ -1561,9 +1561,7 @@ body {
     gap: 16px;
     padding: calc(16px + env(safe-area-inset-top)) 12px 12px 12px;
     margin: 0 -12px;
-    background: rgba(11, 11, 15, 0.5);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: #0b0b0f;
     border-bottom: 1px solid var(--border-color);
   }
   .app-nav {
