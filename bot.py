@@ -44,22 +44,74 @@ def get_gemini_key():
         return DEFAULT_GEMINI_KEY
     return key
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
 def load_db():
-    if not os.path.exists(DB_FILE):
-        return {}
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        if not os.path.exists(DB_FILE):
+            return {}
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[BOT-DB] Error reading local DB: {e}")
+            return {}
+
+    # Load from Supabase REST API
+    url = f"{SUPABASE_URL}/rest/v1/macrosnap_state?id=eq.1&select=state"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+    req = urllib.request.Request(url, headers=headers, method='GET')
     try:
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            res = json.loads(response.read().decode('utf-8'))
+            if res and len(res) > 0:
+                print("[BOT-DB] Successfully loaded state from Supabase.")
+                return res[0].get("state", {})
+            print("[BOT-DB] Supabase returned empty state. Initializing empty dict.")
+            return {}
     except Exception as e:
-        print(f"[BOT-DB] Error reading DB: {e}")
+        print(f"[BOT-DB] Error reading from Supabase: {e}. Falling back to local file.")
+        # Local fallback if Supabase fails
+        if os.path.exists(DB_FILE):
+            try:
+                with open(DB_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                pass
         return {}
 
 def save_db(db):
+    # Always write locally as a backup
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(db, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"[BOT-DB] Error writing DB: {e}")
+        print(f"[BOT-DB] Error writing local DB backup: {e}")
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+
+    # Save to Supabase (Upsert)
+    url = f"{SUPABASE_URL}/rest/v1/macrosnap_state"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+    }
+    payload = json.dumps({"id": 1, "state": db}).encode('utf-8')
+    req = urllib.request.Request(url, data=payload, headers=headers, method='POST')
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            response.read() # Read to complete the request
+            print("[BOT-DB] Successfully saved state to Supabase.")
+    except Exception as e:
+        print(f"[BOT-DB] Error writing to Supabase: {e}")
 
 def make_request(url, data=None, headers=None, method='POST'):
     if headers is None:
