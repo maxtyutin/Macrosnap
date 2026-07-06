@@ -13,6 +13,38 @@ document.getElementById('date-text').innerText = new Date().toLocaleDateString('
 
 // Initialize VK Bridge and Get User Info
 if (bridge) {
+  // Subscribe to theme updates and app settings
+  bridge.subscribe((event) => {
+    if (!event.detail) return;
+    const { type, data } = event.detail;
+    if (type === 'VKWebAppUpdateConfig') {
+      const scheme = data.scheme ? data.scheme : 'client_light';
+      const isDark = scheme.includes('dark');
+      
+      // Dynamic CSS variables for official VK color palettes
+      if (isDark) {
+        document.documentElement.style.setProperty('--tg-bg', '#19191a'); // VK Dark bg
+        document.documentElement.style.setProperty('--tg-text', '#e1e3e6');
+        document.documentElement.style.setProperty('--tg-secondary-bg', '#222223');
+        document.documentElement.style.setProperty('--tg-hint', '#76787a');
+        document.documentElement.style.setProperty('--accent', '#71aaeb');
+      } else {
+        document.documentElement.style.setProperty('--tg-bg', '#ebedf0'); // VK Light bg
+        document.documentElement.style.setProperty('--tg-text', '#000000');
+        document.documentElement.style.setProperty('--tg-secondary-bg', '#ffffff');
+        document.documentElement.style.setProperty('--tg-hint', '#818c99');
+        document.documentElement.style.setProperty('--accent', '#4986cc'); // VK Blue accent
+      }
+      
+      // Match native status and action bar colors to theme
+      bridge.send("VKWebAppSetViewSettings", {
+        "status_bar_style": isDark ? "light" : "dark",
+        "action_bar_color": isDark ? "#19191a" : "#ebedf0",
+        "navigation_bar_color": isDark ? "#19191a" : "#ebedf0"
+      }).catch(err => console.log("SetViewSettings error:", err));
+    }
+  });
+
   bridge.send("VKWebAppInit");
   bridge.send("VKWebAppGetUserInfo")
     .then((data) => {
@@ -637,6 +669,42 @@ function upgradeToPremium() {
     syncUser();
     renderProfile();
     showToast("Поздравляем! Безлимит активирован! 🚀");
+  }
+}
+
+// Delete account and clear data
+function deleteAccount() {
+  if (!currentUser) return;
+  
+  if (confirm("Вы уверены, что хотите НАВСЕГДА удалить свой аккаунт и все данные о питании? Это действие невозможно отменить.")) {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+    document.getElementById('loading-screen').style.display = 'flex';
+    
+    fetch('/api/delete-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: userId })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.success) {
+        currentUser = null;
+        showToast("Ваш аккаунт и данные были успешно удалены.");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        throw new Error("Server error");
+      }
+    })
+    .catch(err => {
+      console.error("Delete account error:", err);
+      showToast("Ошибка при удалении аккаунта. Попробуйте позже.");
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('bottom-nav').style.display = 'flex';
+    });
   }
 }
 

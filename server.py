@@ -226,6 +226,32 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 error_response = {'error': str(e)}
                 self.wfile.write(json.dumps(error_response).encode())
+        elif self.path == '/api/delete-account':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode("utf-8"))
+                user_id = data.get('userId', '')
+                
+                db = load_db()
+                if user_id in db:
+                    del db[user_id]
+                    save_db(db)
+                
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                self.end_headers()
+                
+                response_data = {'success': True}
+                self.wfile.write(json.dumps(response_data).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                error_response = {'error': str(e)}
+                self.wfile.write(json.dumps(error_response).encode())
         else:
             self.send_response(404)
             self.end_headers()
