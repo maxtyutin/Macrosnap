@@ -255,9 +255,7 @@ const dailyTargets = {
 // 5. Global State
 let dailyLog = [];
 let activeMeal = null;
-let model = null;
 let webcam = null;
-let modelLoadingPromise = null;
 
 // ================= INITIALIZATION =================
 document.addEventListener("DOMContentLoaded", () => {
@@ -270,9 +268,6 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Setup Drop Zone Listeners
   setupDropZone();
-  
-  // Pre-load TensorFlow model in background
-  initTensorFlowModel();
   
   // Initialize Telegram Mini App context & backend database sync
   initTelegramAndSync();
@@ -480,31 +475,6 @@ function switchTab(tabId) {
   if (tabId !== "scan") {
     stopWebcam();
   }
-}
-
-// ================= TF.JS MODEL LOADER =================
-function initTensorFlowModel() {
-  if (modelLoadingPromise) return modelLoadingPromise;
-  
-  const statusDot = document.querySelector("#model-status .status-dot");
-  const statusText = document.querySelector("#model-status .status-text");
-
-  modelLoadingPromise = mobilenet.load({ version: 2, alpha: 1.0 })
-    .then(loadedModel => {
-      model = loadedModel;
-      if (statusDot) {
-        statusDot.className = "status-dot green";
-        statusText.innerText = "ИИ готов к распознаванию";
-      }
-    })
-    .catch(err => {
-      console.error("Ошибка загрузки TensorFlow.js MobileNet:", err);
-      if (statusDot) {
-        statusText.innerText = "Ошибка загрузки ИИ (будет симуляция)";
-      }
-    });
-    
-  return modelLoadingPromise;
 }
 
 // ================= WEBCAM & INPUTS =================
@@ -817,32 +787,8 @@ function runCoreNeuralNetwork(imageSrc, mealName) {
   // Always use the embedded Gemini API key if present
   if (GEMINI_API_KEY && GEMINI_API_KEY.trim().length > 0) {
     callGeminiVisionAPI(imageSrc, GEMINI_API_KEY, mealName);
-    return;
-  }
-  
-  const scanImg = document.getElementById("scanning-image-preview");
-  const proceedWithModel = () => {
-    if (model) {
-      model.classify(scanImg)
-        .then(predictions => {
-          console.log("MobileNet Predictions:", predictions);
-          parseAIModelResults(predictions, imageSrc, mealName);
-        })
-        .catch(err => {
-          console.error("Ошибка инференса MobileNet. Запуск симулятора.", err);
-          runSimulatedClassification(imageSrc, mealName);
-        });
-    } else {
-      runSimulatedClassification(imageSrc, mealName);
-    }
-  };
-
-  if (model) {
-    proceedWithModel();
   } else {
-    initTensorFlowModel()
-      .then(proceedWithModel)
-      .catch(() => runSimulatedClassification(imageSrc, mealName));
+    runSimulatedClassification(imageSrc, mealName);
   }
 }
 
@@ -1191,21 +1137,9 @@ function showAnalysisResult() {
 
   document.getElementById("result-image").src = activeMeal.image;
 
-  // Render bounding boxes overlay on results image
+  // Render bounding boxes overlay on results image (disabled to keep image clean)
   const boxArea = document.getElementById("result-bounding-boxes");
   boxArea.innerHTML = "";
-  if (activeMeal.boundingBoxes) {
-    activeMeal.boundingBoxes.forEach(b => {
-      const bbox = document.createElement("div");
-      bbox.className = "result-bbox";
-      bbox.style.left = `${b.x}%`;
-      bbox.style.top = `${b.y}%`;
-      bbox.style.width = `${b.w}%`;
-      bbox.style.height = `${b.h}%`;
-      bbox.innerHTML = `<span class="result-bbox-label">${b.label}</span>`;
-      boxArea.appendChild(bbox);
-    });
-  }
 
   // Render raw classifications tags
   const rawPanel = document.getElementById("ai-raw-outputs");
@@ -1981,10 +1915,29 @@ function renderUserProfile() {
   // Profile Meta
   document.getElementById("profile-display-name").innerText = currentUser.name;
   document.getElementById("profile-display-email").innerText = currentUser.email;
-  document.getElementById("profile-letter-avatar").innerText = currentUser.name.charAt(0).toUpperCase();
+  
+  const avatarEl = document.getElementById("profile-letter-avatar");
+  if (currentUser.avatarUrl) {
+    avatarEl.innerHTML = `<img src="${currentUser.avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;">`;
+    avatarEl.style.background = "none";
+  } else {
+    avatarEl.innerText = currentUser.name.charAt(0).toUpperCase();
+    avatarEl.style.background = ""; // restore default gradient background
+  }
   
   // Calculated summaries
   document.getElementById("profile-calculated-target").innerText = `${currentUser.targets.calories} ккал`;
+  
+  const titleEl = document.getElementById("web-targets-title");
+  const descEl = document.getElementById("web-targets-description");
+  if (titleEl) {
+    titleEl.innerText = currentUser.customTargets ? "Суточная норма (индивидуальная)" : "Суточная норма (ИИ-расчет)";
+  }
+  if (descEl) {
+    descEl.innerText = currentUser.customTargets 
+      ? "Установлены ваши персональные значения калорий и макронутриентов. Сбросьте их, чтобы вернуться к расчету по формуле."
+      : "Расчитано на основе формулы Миффлина-Сан Жеора для поддержания текущей массы тела с учетом вашего пола, возраста и активности.";
+  }
   document.getElementById("profile-bmr-val").innerText = currentUser.targets.bmr;
   
   // BMI (Weight in kg / Height in m^2)
@@ -2041,14 +1994,16 @@ function updateProfileMetric(metric, value) {
   
   currentUser[metric] = parseInt(value);
   
-  // Recalculate targets based on newly adjusted parameters
-  currentUser.targets = calculateUserCalorieGoal(
-    currentUser.gender,
-    currentUser.age,
-    currentUser.height,
-    currentUser.weight,
-    currentUser.activity
-  );
+  // Recalculate targets based on newly adjusted parameters ONLY if not custom
+  if (!currentUser.customTargets) {
+    currentUser.targets = calculateUserCalorieGoal(
+      currentUser.gender,
+      currentUser.age,
+      currentUser.height,
+      currentUser.weight,
+      currentUser.activity
+    );
+  }
   
   // Save changes
   saveAndSyncUser();
@@ -2492,5 +2447,119 @@ function dismissIosInstallPrompt() {
     prompt.style.display = 'none';
   }
   localStorage.setItem('ios_install_prompt_dismissed', 'true');
+}
+
+// Web Avatar upload handlers
+function triggerWebAvatarUpload() {
+  document.getElementById('web-avatar-file-input').click();
+}
+
+function handleWebAvatarUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  compressAndSaveWebAvatar(file, (compressedBase64) => {
+    if (!currentUser) return;
+    currentUser.avatarUrl = compressedBase64;
+    saveAndSyncUser();
+    renderUserProfile();
+    showToast("Аватар успешно обновлен!", "success");
+  });
+}
+
+function compressAndSaveWebAvatar(file, callback) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 150;
+      const MAX_HEIGHT = 150;
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      callback(compressedDataUrl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Web custom targets editing handlers
+function openWebTargetsModal() {
+  if (!currentUser) return;
+  document.getElementById('web-targets-modal').style.display = 'flex';
+  
+  document.getElementById('web-edit-t-cal').value = currentUser.targets.calories;
+  document.getElementById('web-edit-t-prot').value = currentUser.targets.protein;
+  document.getElementById('web-edit-t-carbs').value = currentUser.targets.carbs;
+  document.getElementById('web-edit-t-fats').value = currentUser.targets.fats;
+}
+
+function closeWebTargetsModal() {
+  document.getElementById('web-targets-modal').style.display = 'none';
+}
+
+function saveWebCustomTargets() {
+  const cal = parseInt(document.getElementById('web-edit-t-cal').value);
+  const prot = parseInt(document.getElementById('web-edit-t-prot').value);
+  const carbs = parseInt(document.getElementById('web-edit-t-carbs').value);
+  const fats = parseInt(document.getElementById('web-edit-t-fats').value);
+  
+  if (isNaN(cal) || isNaN(prot) || isNaN(carbs) || isNaN(fats)) {
+    alert("Заполните все поля числовыми значениями.");
+    return;
+  }
+  
+  currentUser.targets = {
+    calories: cal,
+    protein: prot,
+    carbs: carbs,
+    fats: fats,
+    fiber: currentUser.targets.fiber || Math.min(40, Math.max(20, Math.round((cal * 14) / 1000))),
+    bmr: currentUser.targets.bmr || Math.round((currentUser.weight * 10) + (currentUser.height * 6.25) - (currentUser.age * 5))
+  };
+  currentUser.customTargets = true;
+  
+  saveAndSyncUser();
+  renderUserProfile();
+  applyUserTargets(currentUser);
+  closeWebTargetsModal();
+  showToast("Индивидуальные нормы сохранены!", "success");
+}
+
+function resetWebTargetsToFormula() {
+  currentUser.customTargets = false;
+  currentUser.targets = calculateUserCalorieGoal(
+    currentUser.gender,
+    currentUser.age,
+    currentUser.height,
+    currentUser.weight,
+    currentUser.activity
+  );
+  
+  saveAndSyncUser();
+  renderUserProfile();
+  applyUserTargets(currentUser);
+  closeWebTargetsModal();
+  showToast("Нормы сброшены к расчетным.", "success");
 }
 

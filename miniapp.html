@@ -195,7 +195,11 @@
 
       <!-- User Info Card -->
       <div class="card user-card">
-        <div class="avatar" id="profile-avatar">М</div>
+        <div class="avatar-wrapper" onclick="triggerAvatarUpload()" style="position: relative; cursor: pointer;">
+          <div class="avatar" id="profile-avatar">М</div>
+          <div class="avatar-edit-badge" style="position: absolute; bottom: -2px; right: -2px; width: 18px; height: 18px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; border: 1.5px solid var(--tg-secondary-bg);">📷</div>
+        </div>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
         <div class="user-info">
           <div class="user-name" id="profile-name">Пользователь</div>
           <div class="user-sub" id="profile-sub">Telegram ID</div>
@@ -259,7 +263,10 @@
 
       <!-- Daily Targets -->
       <div class="card">
-        <div class="card-title">🔥 Ваши нормы (Миффлин-Сан Жеор)</div>
+        <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div class="card-title" id="targets-title" style="margin-bottom: 0;">🔥 Ваши нормы (ИИ-расчет)</div>
+          <button class="clear-btn" onclick="editTargets()" style="font-size: 13px; color: var(--accent); background: transparent; border: none; cursor: pointer;">Изменить</button>
+        </div>
         <div class="targets-grid">
           <div class="target-item">
             <div class="target-val" id="t-cal">—</div>

@@ -566,6 +566,8 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .meal-thumb-wrapper {
@@ -602,6 +604,7 @@ body {
   display: flex;
   align-items: center;
   gap: 24px;
+  flex-shrink: 0;
 }
 
 .meal-macros-pills {

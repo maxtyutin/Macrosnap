@@ -93,6 +93,20 @@ def send_real_email(to_email, code):
         return False, str(e)
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        if not hasattr(self, '_headers_buffer'):
+            self._headers_buffer = []
+        has_cors = False
+        for header in self._headers_buffer:
+            if b'access-control-allow-origin' in header.lower():
+                has_cors = True
+                break
+        if not has_cors:
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        super().end_headers()
+
     def do_POST(self):
         if self.path == '/api/gemini':
             content_length = int(self.headers['Content-Length'])

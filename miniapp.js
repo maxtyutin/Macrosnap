@@ -449,7 +449,14 @@ function renderProfile() {
   
   // Avatar
   const name = currentUser.name || "Пользователь";
-  document.getElementById('profile-avatar').innerText = name.charAt(0).toUpperCase();
+  const avatarEl = document.getElementById('profile-avatar');
+  if (currentUser.avatarUrl) {
+    avatarEl.innerHTML = `<img src="${currentUser.avatarUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`;
+    avatarEl.style.background = "none";
+  } else {
+    avatarEl.innerText = name.charAt(0).toUpperCase();
+    avatarEl.style.background = "";
+  }
   document.getElementById('profile-name').innerText = name;
   document.getElementById('profile-sub').innerText = `TG: ${userId}`;
   
@@ -485,6 +492,11 @@ function renderProfile() {
   document.getElementById('t-prot').innerText = targets.protein;
   document.getElementById('t-carbs').innerText = targets.carbs;
   document.getElementById('t-fats').innerText = targets.fats;
+  
+  const titleEl = document.getElementById('targets-title');
+  if (titleEl) {
+    titleEl.innerText = currentUser.customTargets ? "🔥 Ваши нормы (индивидуальные)" : "🔥 Ваши нормы (ИИ-расчет)";
+  }
   
   // Premium
   if (currentUser.isPremium) {
@@ -552,13 +564,15 @@ function saveParam(param) {
   if (!val || val <= 0) return;
   
   currentUser[param] = val;
-  currentUser.targets = calculateTargets(
-    currentUser.gender,
-    currentUser.age,
-    currentUser.height,
-    currentUser.weight,
-    currentUser.activity
-  );
+  if (!currentUser.customTargets) {
+    currentUser.targets = calculateTargets(
+      currentUser.gender,
+      currentUser.age,
+      currentUser.height,
+      currentUser.weight,
+      currentUser.activity
+    );
+  }
   
   syncUser();
   renderProfile();
@@ -568,13 +582,15 @@ function saveParam(param) {
 
 function setGender(g) {
   currentUser.gender = g;
-  currentUser.targets = calculateTargets(
-    currentUser.gender,
-    currentUser.age,
-    currentUser.height,
-    currentUser.weight,
-    currentUser.activity
-  );
+  if (!currentUser.customTargets) {
+    currentUser.targets = calculateTargets(
+      currentUser.gender,
+      currentUser.age,
+      currentUser.height,
+      currentUser.weight,
+      currentUser.activity
+    );
+  }
   syncUser();
   renderProfile();
   closeModal(null, true);
@@ -583,13 +599,15 @@ function setGender(g) {
 
 function setActivity(a) {
   currentUser.activity = a;
-  currentUser.targets = calculateTargets(
-    currentUser.gender,
-    currentUser.age,
-    currentUser.height,
-    currentUser.weight,
-    currentUser.activity
-  );
+  if (!currentUser.customTargets) {
+    currentUser.targets = calculateTargets(
+      currentUser.gender,
+      currentUser.age,
+      currentUser.height,
+      currentUser.weight,
+      currentUser.activity
+    );
+  }
   syncUser();
   renderProfile();
   closeModal(null, true);
@@ -623,4 +641,139 @@ function showToast(text) {
   setTimeout(() => {
     toast.classList.remove('show');
   }, 2500);
+}
+
+// Custom targets editing handlers
+function editTargets() {
+  const modal = document.getElementById('edit-modal');
+  const title = document.getElementById('modal-title');
+  const body = document.getElementById('modal-body');
+  
+  modal.style.display = 'flex';
+  title.innerText = "Настройка норм КБЖУ";
+  
+  const currentCal = currentUser.targets.calories;
+  const currentProt = currentUser.targets.protein;
+  const currentCarbs = currentUser.targets.carbs;
+  const currentFats = currentUser.targets.fats;
+  
+  body.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; margin-bottom: 16px; text-align: left;">
+      <div>
+        <label style="font-size: 12px; color: var(--tg-hint); display: block; margin-bottom: 4px;">Калории (ккал)</label>
+        <input type="number" id="edit-t-cal" class="modal-input" value="${currentCal}" min="500" max="10000" style="margin-bottom:0; width:100%; box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size: 12px; color: var(--tg-hint); display: block; margin-bottom: 4px;">Белки (г)</label>
+        <input type="number" id="edit-t-prot" class="modal-input" value="${currentProt}" min="0" max="1000" style="margin-bottom:0; width:100%; box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size: 12px; color: var(--tg-hint); display: block; margin-bottom: 4px;">Углеводы (г)</label>
+        <input type="number" id="edit-t-carbs" class="modal-input" value="${currentCarbs}" min="0" max="2000" style="margin-bottom:0; width:100%; box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size: 12px; color: var(--tg-hint); display: block; margin-bottom: 4px;">Жиры (г)</label>
+        <input type="number" id="edit-t-fats" class="modal-input" value="${currentFats}" min="0" max="500" style="margin-bottom:0; width:100%; box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px; width: 100%; box-sizing:border-box;">
+      <button class="modal-save" onclick="saveCustomTargets()" style="flex: 1; margin: 0; padding: 12px;">Сохранить</button>
+      <button class="modal-save" onclick="resetTargetsToFormula()" style="flex: 1; margin: 0; padding: 12px; background: var(--tg-secondary-bg); color: var(--tg-text); border: 1px solid rgba(255,255,255,0.08);">Сбросить</button>
+    </div>
+  `;
+}
+
+function saveCustomTargets() {
+  const cal = parseInt(document.getElementById('edit-t-cal').value);
+  const prot = parseInt(document.getElementById('edit-t-prot').value);
+  const carbs = parseInt(document.getElementById('edit-t-carbs').value);
+  const fats = parseInt(document.getElementById('edit-t-fats').value);
+  
+  if (isNaN(cal) || isNaN(prot) || isNaN(carbs) || isNaN(fats)) {
+    alert("Заполните все поля числовыми значениями.");
+    return;
+  }
+  
+  currentUser.targets = {
+    calories: cal,
+    protein: prot,
+    carbs: carbs,
+    fats: fats,
+    bmr: currentUser.targets.bmr || Math.round((currentUser.weight * 10) + (currentUser.height * 6.25) - (currentUser.age * 5))
+  };
+  currentUser.customTargets = true;
+  
+  syncUser();
+  renderProfile();
+  closeModal(null, true);
+  showToast("Индивидуальные нормы сохранены!");
+}
+
+function resetTargetsToFormula() {
+  currentUser.customTargets = false;
+  currentUser.targets = calculateTargets(
+    currentUser.gender,
+    currentUser.age,
+    currentUser.height,
+    currentUser.weight,
+    currentUser.activity
+  );
+  syncUser();
+  renderProfile();
+  closeModal(null, true);
+  showToast("Нормы сброшены к расчетным.");
+}
+
+// Avatar upload handlers
+function triggerAvatarUpload() {
+  document.getElementById('avatar-file-input').click();
+}
+
+function handleAvatarUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  compressAndSaveAvatar(file, (compressedBase64) => {
+    if (!currentUser) return;
+    currentUser.avatarUrl = compressedBase64;
+    syncUser();
+    renderProfile();
+    showToast("Аватар успешно обновлен!");
+  });
+}
+
+function compressAndSaveAvatar(file, callback) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 150;
+      const MAX_HEIGHT = 150;
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      callback(compressedDataUrl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
