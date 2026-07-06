@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MacroSnap AI — VK Mini App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- VK Bridge SDK -->
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser/sdk.js"></script>
+  <link rel="stylesheet" href="miniapp.css">
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-logo">
+      <div class="loading-icon">🍎</div>
+      <div class="loading-title">MacroSnap AI</div>
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app" style="display:none">
+
+    <!-- Tab: Dashboard -->
+    <div id="tab-dashboard" class="tab active">
+      <div class="page-header">
+        <div class="greeting" id="greeting-text">Привет! 👋</div>
+        <div class="date-text" id="date-text"></div>
+      </div>
+
+      <!-- Calorie Ring Card -->
+      <div class="card ring-card">
+        <div class="ring-container">
+          <svg class="progress-ring" width="160" height="160" viewBox="0 0 160 160">
+            <circle class="ring-bg" cx="80" cy="80" r="68" />
+            <circle id="cal-ring" class="ring-fg" cx="80" cy="80" r="68"
+              stroke-dasharray="427" stroke-dashoffset="427" />
+          </svg>
+          <div class="ring-center">
+            <div class="ring-val" id="cal-consumed">0</div>
+            <div class="ring-label">ккал</div>
+            <div class="ring-sub" id="cal-remain">из 0</div>
+          </div>
+        </div>
+        <div class="macro-row">
+          <div class="macro-pill" style="--c:#f87171">
+            <span class="macro-icon">💪</span>
+            <div>
+              <div class="macro-val" id="m-protein">0г</div>
+              <div class="macro-name">Белки</div>
+            </div>
+          </div>
+          <div class="macro-pill" style="--c:#fb923c">
+            <span class="macro-icon">🌾</span>
+            <div>
+              <div class="macro-val" id="m-carbs">0г</div>
+              <div class="macro-name">Углеводы</div>
+            </div>
+          </div>
+          <div class="macro-pill" style="--c:#60a5fa">
+            <span class="macro-icon">💧</span>
+            <div>
+              <div class="macro-val" id="m-fats">0г</div>
+              <div class="macro-name">Жиры</div>
+            </div>
+          </div>
+          <div class="macro-pill" style="--c:#4ade80">
+            <span class="macro-icon">🥦</span>
+            <div>
+              <div class="macro-val" id="m-fiber">0г</div>
+              <div class="macro-name">Клетчатка</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Macro Progress Bars -->
+      <div class="card">
+        <div class="card-title">Нормы КБЖУ</div>
+        <div class="progress-list" id="progress-list">
+          <div class="prog-item">
+            <div class="prog-header"><span>Калории</span><span id="pg-cal">0 / 0 ккал</span></div>
+            <div class="prog-bar-bg"><div class="prog-bar" id="pgb-cal" style="width:0%;background:#a78bfa"></div></div>
+          </div>
+          <div class="prog-item">
+            <div class="prog-header"><span>Белки</span><span id="pg-prot">0 / 0г</span></div>
+            <div class="prog-bar-bg"><div class="prog-bar" id="pgb-prot" style="width:0%;background:#f87171"></div></div>
+          </div>
+          <div class="prog-item">
+            <div class="prog-header"><span>Углеводы</span><span id="pg-carbs">0 / 0г</span></div>
+            <div class="prog-bar-bg"><div class="prog-bar" id="pgb-carbs" style="width:0%;background:#fb923c"></div></div>
+          </div>
+          <div class="prog-item">
+            <div class="prog-header"><span>Жиры</span><span id="pg-fats">0 / 0г</span></div>
+            <div class="prog-bar-bg"><div class="prog-bar" id="pgb-fats" style="width:0%;background:#60a5fa"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meal Log -->
+      <div class="card">
+        <div class="card-header-row">
+          <div class="card-title">Дневник питания</div>
+          <button class="clear-btn" onclick="clearLog()">Очистить</button>
+        </div>
+        <div id="meal-list">
+          <div class="empty-state">
+            <div class="empty-icon">🍽️</div>
+            <div>Дневник пуст. Отсканируйте первое блюдо!</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tab: Scan -->
+    <div id="tab-scan" class="tab">
+      <div class="page-header">
+        <div class="greeting">📸 Сканировать</div>
+        <div class="date-text">ИИ-анализ блюда по фото</div>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="card scan-zone" id="scan-zone" onclick="triggerScan()">
+        <div class="scan-icon">📷</div>
+        <div class="scan-title">Нажмите, чтобы сфотографировать еду</div>
+        <div class="scan-sub">ИИ Gemini определит состав, вес и КБЖУ</div>
+        <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+      </div>
+
+      <!-- Scan Result (hidden until scan) -->
+      <div id="scan-result" style="display:none">
+        <div class="card result-card">
+          <img id="result-img" class="result-image" src="" alt="Блюдо">
+          <div class="result-name" id="result-name"></div>
+          <div class="result-macros">
+            <div class="result-macro-item">
+              <div class="rm-val" id="r-cal">—</div>
+              <div class="rm-label">ккал</div>
+            </div>
+            <div class="result-macro-item">
+              <div class="rm-val" id="r-prot">—</div>
+              <div class="rm-label">белки</div>
+            </div>
+            <div class="result-macro-item">
+              <div class="rm-val" id="r-carbs">—</div>
+              <div class="rm-label">углеводы</div>
+            </div>
+            <div class="result-macro-item">
+              <div class="rm-val" id="r-fats">—</div>
+              <div class="rm-label">жиры</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="ingredients-card">
+          <div class="card-title">🥗 Состав порции</div>
+          <div id="ingredients-list"></div>
+        </div>
+
+        <div class="card coach-card" id="coach-card">
+          <div class="card-title">💡 Совет ИИ-коуча</div>
+          <div id="coach-text" class="coach-text-content"></div>
+        </div>
+
+        <div class="card reasoning-card">
+          <div class="card-title">🧠 Как ИИ оценил вес</div>
+          <div id="reasoning-text" class="reasoning-text"></div>
+        </div>
+
+        <div class="action-btns">
+          <button class="btn-primary" onclick="addToLog()">📥 Добавить в дневник</button>
+          <button class="btn-secondary" onclick="rescan()">🔄 Сканировать ещё</button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="scan-loading" style="display:none" class="card scan-loading-card">
+        <div class="scan-spinner"></div>
+        <div class="scan-loading-text">Gemini анализирует блюдо...</div>
+        <div class="scan-loading-sub">Определяю ингредиенты и вес порции</div>
+      </div>
+
+    </div>
+
+    <!-- Tab: Profile -->
+    <div id="tab-profile" class="tab">
+      <div class="page-header">
+        <div class="greeting">👤 Мой профиль</div>
+        <div class="date-text">Персональные параметры</div>
+      </div>
+
+      <!-- User Info Card -->
+      <div class="card user-card">
+        <div class="avatar-wrapper" onclick="triggerAvatarUpload()" style="position: relative; cursor: pointer;">
+          <div class="avatar" id="profile-avatar">М</div>
+          <div class="avatar-edit-badge" style="position: absolute; bottom: -2px; right: -2px; width: 18px; height: 18px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; border: 1.5px solid #222;">📷</div>
+        </div>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+        <div class="user-info">
+          <div class="user-name" id="profile-name">Пользователь</div>
+          <div class="user-sub" id="profile-sub">VK ID</div>
+        </div>
+        <div class="premium-badge" id="premium-badge">FREE</div>
+      </div>
+
+      <!-- BMI Card -->
+      <div class="card bmi-card">
+        <div class="bmi-label">ИМТ (Индекс массы тела)</div>
+        <div class="bmi-value" id="bmi-value">—</div>
+        <div class="bmi-status" id="bmi-status">—</div>
+      </div>
+
+      <!-- Parameters -->
+      <div class="card">
+        <div class="card-title">Параметры тела</div>
+        <div class="param-list">
+          <div class="param-item" onclick="editParam('weight')">
+            <div class="param-icon">⚖️</div>
+            <div class="param-info">
+              <div class="param-name">Вес</div>
+              <div class="param-val" id="p-weight">— кг</div>
+            </div>
+            <div class="param-arrow">›</div>
+          </div>
+          <div class="param-item" onclick="editParam('height')">
+            <div class="param-icon">📏</div>
+            <div class="param-info">
+              <div class="param-name">Рост</div>
+              <div class="param-val" id="p-height">— см</div>
+            </div>
+            <div class="param-arrow">›</div>
+          </div>
+          <div class="param-item" onclick="editParam('age')">
+            <div class="param-icon">🎂</div>
+            <div class="param-info">
+              <div class="param-name">Возраст</div>
+              <div class="param-val" id="p-age">— лет</div>
+            </div>
+            <div class="param-arrow">›</div>
+          </div>
+          <div class="param-item" onclick="editParam('activity')">
+            <div class="param-icon">🏃</div>
+            <div class="param-info">
+              <div class="param-name">Активность</div>
+              <div class="param-val" id="p-activity">—</div>
+            </div>
+            <div class="param-arrow">›</div>
+          </div>
+          <div class="param-item" onclick="editParam('gender')">
+            <div class="param-icon">👤</div>
+            <div class="param-info">
+              <div class="param-name">Пол</div>
+              <div class="param-val" id="p-gender">—</div>
+            </div>
+            <div class="param-arrow">›</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Targets -->
+      <div class="card">
+        <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div class="card-title" id="targets-title" style="margin-bottom: 0;">🔥 Ваши нормы (ИИ-расчет)</div>
+          <button class="clear-btn" onclick="editTargets()" style="font-size: 13px; color: var(--accent); background: transparent; border: none; cursor: pointer;">Изменить</button>
+        </div>
+        <div class="targets-grid">
+          <div class="target-item">
+            <div class="target-val" id="t-cal">—</div>
+            <div class="target-label">ккал</div>
+          </div>
+          <div class="target-item">
+            <div class="target-val" id="t-prot">—</div>
+            <div class="target-label">белки г</div>
+          </div>
+          <div class="target-item">
+            <div class="target-val" id="t-carbs">—</div>
+            <div class="target-label">углеводы г</div>
+          </div>
+          <div class="target-item">
+            <div class="target-val" id="t-fats">—</div>
+            <div class="target-label">жиры г</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Premium -->
+      <div class="card premium-card" id="premium-section">
+        <div class="premium-icon">👑</div>
+        <div class="premium-info">
+          <div class="premium-title">Безлимит за 490 ₽/мес</div>
+          <div class="premium-desc">Безлимитные ИИ-сканирования, без ограничений</div>
+        </div>
+        <button class="btn-premium" onclick="upgradeToPremium()">Оформить</button>
+      </div>
+
+      <div class="card premium-active-card" id="premium-active" style="display:none">
+        <div class="premium-icon">🚀</div>
+        <div class="premium-info">
+          <div class="premium-title">Статус: Безлимит активен!</div>
+          <div class="premium-desc">Неограниченное ИИ-сканирование блюд</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" id="bottom-nav" style="display:none">
+    <button class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Дашборд</span>
+    </button>
+    <button class="nav-item" id="nav-scan" onclick="switchTab('scan')">
+      <div class="nav-scan-btn">
+        <span>📸</span>
+      </div>
+      <span class="nav-label">Сканировать</span>
+    </button>
+    <button class="nav-item" id="nav-profile" onclick="switchTab('profile')">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Профиль</span>
+    </button>
+  </nav>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal-overlay" style="display:none" onclick="closeModal(event)">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="modal-title">Изменить параметр</div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script src="vkapp.js"></script>
+</body>
+</html>
