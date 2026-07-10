@@ -13,10 +13,12 @@ document.getElementById('date-text').innerText = new Date().toLocaleDateString('
 
 // Initialize VK Bridge and Get User Info
 if (bridge) {
+  console.log("VK Bridge found, initializing...");
   // Subscribe to theme updates and app settings
   bridge.subscribe((event) => {
     if (!event.detail) return;
     const { type, data } = event.detail;
+    console.log("VK Bridge Event:", type, data);
     if (type === 'VKWebAppUpdateConfig') {
       const scheme = data.scheme ? data.scheme : 'client_light';
       const isDark = scheme.includes('dark');
@@ -45,9 +47,17 @@ if (bridge) {
     }
   });
 
-  bridge.send("VKWebAppInit");
+  bridge.send("VKWebAppInit")
+    .then((data) => {
+      console.log("VKWebAppInit success:", data);
+    })
+    .catch((err) => {
+      console.error("VKWebAppInit error:", err);
+    });
+
   bridge.send("VKWebAppGetUserInfo")
     .then((data) => {
+      console.log("VK User info fetched:", data.id);
       vkUserData = data;
       if (data.id) {
         userId = `vk_${data.id}`;
@@ -59,6 +69,7 @@ if (bridge) {
       loadApp();
     });
 } else {
+  console.warn("VK Bridge not found! Is the script loaded?");
   loadApp();
 }
 
