@@ -1,9 +1,10 @@
-const CACHE_NAME = 'macrosnap-cache-v1';
+const CACHE_NAME = 'macrosnap-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/styles.css',
   '/app.js',
+  '/lucide.min.js',
   '/manifest.json',
   '/images/avocado_toast.jpg',
   '/images/berry_bowl.jpg',

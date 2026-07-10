@@ -1504,12 +1504,10 @@ function callGeminiVisionAPI(imageSrc, apiKey, mealName) {
       const mimeType = resizedImageSrc.split(";")[0].split(":")[1] || "image/jpeg";
       
        let apiEndpoint = "";
-       if (isLocalEnvironment()) {
-         apiEndpoint = "/api/gemini";
-       } else if (window.location.protocol === "file:" || window.location.hostname === "") {
+       if (window.location.protocol === "file:" || window.location.hostname === "") {
          apiEndpoint = "http://localhost:8888/api/gemini";
        } else {
-         apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+         apiEndpoint = "/api/gemini";
        }
       
       // We ask Gemini to estimate nutrients directly, enabling analysis of ANY food in the world!
