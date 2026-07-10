@@ -9,11 +9,26 @@ let vkUserData = null;
 
 // Format date for greeting
 const options = { weekday: 'long', month: 'long', day: 'numeric' };
+let isAppLoaded = false;
 document.getElementById('date-text').innerText = new Date().toLocaleDateString('ru-RU', options);
+
+// Load App
+function loadApp() {
+  if (isAppLoaded) return;
+  isAppLoaded = true;
+  fetchUserData();
+}
 
 // Initialize VK Bridge and Get User Info
 if (bridge) {
   console.log("VK Bridge found, initializing...");
+  
+  // Set a safety timeout to ensure the app loads even if VK Bridge hangs (e.g. when opened in a regular browser)
+  const initTimeout = setTimeout(() => {
+    console.warn("VK Bridge initialization timed out. Loading app anyway.");
+    loadApp();
+  }, 2500);
+
   // Subscribe to theme updates and app settings
   bridge.subscribe((event) => {
     if (!event.detail) return;
@@ -62,20 +77,17 @@ if (bridge) {
       if (data.id) {
         userId = `vk_${data.id}`;
       }
+      clearTimeout(initTimeout);
       loadApp();
     })
     .catch((err) => {
       console.error("VK GetUserInfo error:", err);
+      clearTimeout(initTimeout);
       loadApp();
     });
 } else {
   console.warn("VK Bridge not found! Is the script loaded?");
   loadApp();
-}
-
-// Load App
-function loadApp() {
-  fetchUserData();
 }
 
 // Fetch user data from server sync

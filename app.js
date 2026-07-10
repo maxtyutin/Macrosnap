@@ -1,3 +1,11 @@
+// Guard against Lucide library failing to load (e.g. offline or CDN blocked under VPN)
+if (typeof window.lucide === 'undefined') {
+  window.lucide = {
+    createIcons: function() { console.log('Lucide CDN is unavailable, skipping icon generation.'); }
+  };
+}
+const lucide = window.lucide;
+
 // Intercept browser logs and send them to the server
 function sendBrowserLog(message) {
   const isFile = window.location.protocol === "file:" || window.location.hostname === "";
@@ -2411,11 +2419,18 @@ function saveAndSyncUser() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    const register = () => {
       navigator.serviceWorker.register('/service-worker.js')
         .then(reg => console.log('Service Worker registered successfully with scope:', reg.scope))
         .catch(err => console.error('Service Worker registration failed:', err));
-    });
+    };
+    
+    // Check if page is already loaded (common in iOS standalone/PWA startups)
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      register();
+    } else {
+      window.addEventListener('load', register);
+    }
   }
 }
 

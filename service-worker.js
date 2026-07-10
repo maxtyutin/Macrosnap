@@ -42,32 +42,38 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch Event (Stale-While-Revalidate Strategy for assets, bypass for API requests)
+// Fetch Event (Stale-While-Revalidate Strategy for same-origin assets, direct fetch for cross-origin or API)
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   
-  // Bypass API requests or external resources that shouldn't be cached in the app shell
-  if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') {
-    return; // Let browser handle it normally
+  // Only handle GET requests for same-origin resources
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
+    return;
   }
   
-  // For other requests, apply Stale-While-Revalidate
+  // Bypass API requests
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
-      const fetchPromise = fetch(event.request).then(networkResponse => {
-        // Cache the updated response if it's valid
-        if (networkResponse && networkResponse.status === 200) {
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, networkResponse.clone());
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // Fallback or ignore network error if offline
-      });
+      if (cachedResponse) {
+        // Fetch fresh copy in background to update the cache
+        fetch(event.request).then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, networkResponse.clone());
+            });
+          }
+        }).catch(() => {
+          // Ignore background fetch failures
+        });
+        return cachedResponse;
+      }
       
-      // Return cached response if available, else wait for network
-      return cachedResponse || fetchPromise;
+      // Fetch from network normally (letting errors propagate naturally)
+      return fetch(event.request);
     })
   );
 });
