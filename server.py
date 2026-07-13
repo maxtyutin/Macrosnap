@@ -120,6 +120,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             # List of models to try in sequence if rate-limiting or quota errors occur
             models = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-2.0-flash"]
             last_error = None
+            last_details = ""
             success = False
             res_data = b""
             
@@ -148,6 +149,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                             err_details = e.read().decode('utf-8', errors='ignore')
                         except:
                             pass
+                    last_details = err_details
                     print(f"[Gemini proxy] Model {model} failed: {e}. Details: {err_details}")
             
             if success:
@@ -162,13 +164,13 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 # Log error
                 err_msg = str(last_error)
                 with open("gemini_response.log", "w", encoding="utf-8") as f:
-                    f.write(f"ERROR: All models failed. Last error: {err_msg}")
+                    f.write(f"ERROR: All models failed. Last error: {err_msg}. Details: {last_details}")
                     
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                error_response = {'error': f"All Gemini models failed. Last error: {err_msg}"}
+                error_response = {'error': f"All Gemini models failed. Last error: {err_msg}. Details: {last_details}"}
                 self.wfile.write(json.dumps(error_response).encode())
         elif self.path == '/api/send-code':
             content_length = int(self.headers['Content-Length'])
