@@ -305,6 +305,16 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 'user': user_data
             }
             self.wfile.write(json.dumps(response_data).encode('utf-8'))
+        elif self.path == '/api/debug-gemini-log':
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            logs = ""
+            if os.path.exists("gemini_response.log"):
+                with open("gemini_response.log", "r", encoding="utf-8") as f:
+                    logs = f.read()
+            self.wfile.write(logs.encode('utf-8'))
         else:
             super().do_GET()
 
