@@ -112,43 +112,63 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             
-            # Google Gemini 3.5 Flash API endpoint (Obfuscated)
+            # Google Gemini API key (Obfuscated)
             part_a = "AIzaSyBrjH5Jtqm98P"
             part_b = "dV3431eLY6caxHXFG_Nd0"
             gemini_key = part_a + part_b
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={gemini_key}"
             
-            req = urllib.request.Request(
-                url,
-                data=post_data,
-                headers={'Content-Type': 'application/json'}
-            )
+            # List of models to try in sequence if rate-limiting or quota errors occur
+            models = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-2.0-flash"]
+            last_error = None
+            success = False
+            res_data = b""
             
-            try:
-                with urllib.request.urlopen(req) as response:
-                    res_data = response.read()
-                    
-                    # Log response to workspace file for debugging
-                    with open("gemini_response.log", "w", encoding="utf-8") as f:
-                        f.write(res_data.decode("utf-8", errors="ignore"))
-                    
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-                    self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-                    self.end_headers()
-                    self.wfile.write(res_data)
-            except Exception as e:
+            for model in models:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+                req = urllib.request.Request(
+                    url,
+                    data=post_data,
+                    headers={'Content-Type': 'application/json'}
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=15) as response:
+                        res_data = response.read()
+                        
+                        # Log response for debugging
+                        with open("gemini_response.log", "w", encoding="utf-8") as f:
+                            f.write(res_data.decode("utf-8", errors="ignore"))
+                        
+                        success = True
+                        break
+                except Exception as e:
+                    last_error = e
+                    err_details = ""
+                    if hasattr(e, 'read'):
+                        try:
+                            err_details = e.read().decode('utf-8', errors='ignore')
+                        except:
+                            pass
+                    print(f"[Gemini proxy] Model {model} failed: {e}. Details: {err_details}")
+            
+            if success:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                self.end_headers()
+                self.wfile.write(res_data)
+            else:
                 # Log error
+                err_msg = str(last_error)
                 with open("gemini_response.log", "w", encoding="utf-8") as f:
-                    f.write(f"ERROR: {str(e)}")
+                    f.write(f"ERROR: All models failed. Last error: {err_msg}")
                     
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                error_response = {'error': str(e)}
+                error_response = {'error': f"All Gemini models failed. Last error: {err_msg}"}
                 self.wfile.write(json.dumps(error_response).encode())
         elif self.path == '/api/send-code':
             content_length = int(self.headers['Content-Length'])

@@ -80,7 +80,6 @@ for model_name in models:
             res_data = json.loads(response.read().decode('utf-8'))
             text = res_data['candidates'][0]['content']['parts'][0]['text']
             print(f"SUCCESS {model_name}: {text[:200]}")
-            break
     except Exception as e:
         print(f"ERROR {model_name}: {e}")
         if hasattr(e, 'read'):
